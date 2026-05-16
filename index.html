@@ -1222,6 +1222,7 @@ function renderExpenses(){
       <td><span class="badge b-blue">${e.mode||'Cash'}</span></td>
       <td>${e.remarks||'—'}</td>
       <td class="no-print">
+        <button class="btn btn-gold btn-xs" onclick="editExpense('${e.id}')">✏️ Edit</button>
         <button class="btn btn-navy btn-xs" onclick="printExpVoucher('${e.id}')">🖨️</button>
         <button class="btn btn-red btn-xs" onclick="deleteExpense('${e.id}')">Del</button>
       </td>
@@ -1231,6 +1232,28 @@ function renderExpenses(){
 }
 
 function deleteExpense(id){if(!confirm('Delete?'))return;D.expenses=D.expenses.filter(x=>x.id!==id);saveDB();renderExpStats();renderExpenses();}
+
+function editExpense(id){
+  const e=D.expenses.find(x=>x.id===id);
+  if(!e) return;
+  // Fill form with existing data
+  document.getElementById('exp-cat').value=e.category||'steel';
+  document.getElementById('exp-date').value=e.date||today();
+  document.getElementById('exp-vendor').value=e.vendor||'';
+  document.getElementById('exp-amount').value=e.amount||'';
+  document.getElementById('exp-vno').value=e.vno||'';
+  document.getElementById('exp-mode').value=e.mode||'Cash';
+  document.getElementById('exp-remarks').value=e.remarks||'';
+  // Delete old entry
+  D.expenses=D.expenses.filter(x=>x.id!==id);
+  saveDB();
+  renderExpenses();
+  // Scroll to form
+  document.getElementById('exp-alert').className='alert alert-success';
+  document.getElementById('exp-alert').textContent='✏️ Entry edit mode mein hai — changes kar ke Save karein!';
+  document.getElementById('exp-alert').style.display='block';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 
 function previewVoucher(){
   const vendor=document.getElementById('exp-vendor').value.trim();
@@ -1726,42 +1749,43 @@ function sendWhatsApp(type, data){
   const now=new Date().toLocaleDateString('en-PK');
 
   if(type==='expense'){
-    msg=`🏢 *${co} — Expense Entry*\n`+
-        `📅 Date: ${data.date}\n`+
-        `📂 Category: ${(CATS[data.category]||data.category).replace(/[^\w\s&]/g,'').trim()}\n`+
-        `🏷️ Vendor: ${data.vendor}\n`+
-        `💰 Amount: *Rs. ${fmt(data.amount)}*\n`+
-        `🔖 Voucher: ${data.vno||'—'}\n`+
-        `💳 Mode: ${data.mode||'Cash'}\n`+
-        (data.remarks?`📝 Remarks: ${data.remarks}\n`:'')+
-        `✅ Entered: ${now}`;
+    const catClean=(CATS[data.category]||data.category).replace(/[\u{1F300}-\u{1FFFF}]/gu,'').trim();
+    msg=`*${co} — Expense Entry*\n`+
+        `Date: ${data.date}\n`+
+        `Category: ${catClean}\n`+
+        `Vendor: ${data.vendor}\n`+
+        `Amount: *Rs. ${fmt(data.amount)}*\n`+
+        `Voucher: ${data.vno||'—'}\n`+
+        `Mode: ${data.mode||'Cash'}\n`+
+        (data.remarks?`Remarks: ${data.remarks}\n`:'')+
+        `Entered: ${now}`;
   } else if(type==='flat'){
-    msg=`🏢 *${co} — Flat Payment*\n`+
-        `📅 Date: ${data.date}\n`+
-        `🏠 Flat No: *${data.flatno}*\n`+
-        `👤 Client: ${data.name}\n`+
-        `💰 Payment: *Rs. ${fmt(data.payAmt)}*\n`+
-        `💳 Mode: ${data.mode||'Cash'}\n`+
-        (data.remarks?`📝 Remarks: ${data.remarks}\n`:'')+
-        `✅ Entered: ${now}`;
+    msg=`*${co} — Flat Payment*\n`+
+        `Date: ${data.date}\n`+
+        `Flat No: *${data.flatno}*\n`+
+        `Client: ${data.name}\n`+
+        `Payment: *Rs. ${fmt(data.payAmt)}*\n`+
+        `Mode: ${data.mode||'Cash'}\n`+
+        (data.remarks?`Remarks: ${data.remarks}\n`:'')+
+        `Entered: ${now}`;
   } else if(type==='partner'){
-    msg=`🏢 *${co} — Partner Entry*\n`+
-        `📅 Date: ${data.date}\n`+
-        `👥 Partner: *${getPartnerName(data.partner)}*\n`+
-        `📌 Type: ${data.type}\n`+
-        `💰 Amount: *Rs. ${fmt(data.amount)}*\n`+
-        `💳 Mode: ${data.mode}\n`+
-        (data.desc?`📝 Desc: ${data.desc}\n`:'')+
-        `✅ Entered: ${now}`;
+    msg=`*${co} — Partner Entry*\n`+
+        `Date: ${data.date}\n`+
+        `Partner: *${getPartnerName(data.partner)}*\n`+
+        `Type: ${data.type}\n`+
+        `Amount: *Rs. ${fmt(data.amount)}*\n`+
+        `Mode: ${data.mode}\n`+
+        (data.desc?`Desc: ${data.desc}\n`:'')+
+        `Entered: ${now}`;
   } else if(type==='monthly'){
     const net=Number(data.recv||0)-Number(data.exp||0);
-    msg=`🏢 *${co} — Monthly Closing*\n`+
-        `📅 Month: *${data.month}*\n`+
-        `💸 Expenses: Rs. ${fmt(data.exp)}\n`+
-        `✅ Received: Rs. ${fmt(data.recv)}\n`+
-        `📊 Net: *Rs. ${fmt(net)}*\n`+
-        (data.remarks?`📝 Remarks: ${data.remarks}\n`:'')+
-        `🕐 Closed: ${now}`;
+    msg=`*${co} — Monthly Closing*\n`+
+        `Month: *${data.month}*\n`+
+        `Expenses: Rs. ${fmt(data.exp)}\n`+
+        `Received: Rs. ${fmt(data.recv)}\n`+
+        `Net: *Rs. ${fmt(net)}*\n`+
+        (data.remarks?`Remarks: ${data.remarks}\n`:'')+
+        `Closed: ${now}`;
   }
 
   const encoded=encodeURIComponent(msg);
