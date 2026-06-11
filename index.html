@@ -344,7 +344,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
       <div class="ob-grid" id="ob-fields"></div>
       <div class="btn-row no-print">
         <button class="btn btn-gold" onclick="saveOpeningBalance()">💾 Save All Opening Balances</button>
-        <button class="btn btn-navy" onclick="window.print()">🖨️ Print</button>
+        <button class="btn btn-navy" onclick="printSection('opening')">🖨️ Print</button>
       </div>
     </div>
   </div>
@@ -452,7 +452,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
           <option value="construction">Construction</option>
           <option value="office">Office</option>
         </select>
-        <button class="btn btn-navy btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+        <button class="btn btn-navy btn-sm no-print" onclick="printSection('expenses')">🖨️ Print</button>
       </div>
     </div>
     <div class="card-body">
@@ -543,7 +543,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <div class="card">
     <div class="card-header">
       <h3>🏠 Flat Collection Records</h3>
-      <button class="btn btn-navy btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+      <button class="btn btn-navy btn-sm no-print" onclick="printSection('flats')">🖨️ Print</button>
     </div>
     <div class="card-body">
       <div class="search-bar"><input type="text" id="fl-search" placeholder="🔍 Search client or flat..." oninput="renderFlats()"></div>
@@ -600,7 +600,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <div class="card">
     <div class="card-header">
       <h3>📋 Monthly Closing Records</h3>
-      <button class="btn btn-navy btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+      <button class="btn btn-navy btn-sm no-print" onclick="printSection('monthly')">🖨️ Print</button>
     </div>
     <div class="card-body">
       <div class="tbl-wrap">
@@ -673,7 +673,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
       <h3>📒 Partner Ledger</h3>
       <div style="display:flex;gap:8px;">
         <select id="pt-filter" onchange="renderPartnerLedger()" class="filter-sel"><option value="all">All Partners</option></select>
-        <button class="btn btn-navy btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+        <button class="btn btn-navy btn-sm no-print" onclick="printSection('partners')">🖨️ Print</button>
       </div>
     </div>
     <div class="card-body">
@@ -696,7 +696,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
         <select id="recon-month-filter" class="filter-sel" onchange="renderReconciliation()">
           <option value="all">All Time</option>
         </select>
-        <button class="btn btn-gold btn-sm no-print" onclick="window.print()">🖨️ Print Statement</button>
+        <button class="btn btn-gold btn-sm no-print" onclick="printSection('recon')">🖨️ Print Statement</button>
       </div>
     </div>
     <div class="card-body" id="recon-body">
@@ -754,7 +754,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
       <h3>🏗️ Contractor Ledger</h3>
       <div style="display:flex;gap:8px;">
         <select id="ct-filter" onchange="renderContractors()" class="filter-sel"><option value="all">All Contractors</option></select>
-        <button class="btn btn-navy btn-sm no-print" onclick="window.print()">🖨️ Print</button>
+        <button class="btn btn-navy btn-sm no-print" onclick="printSection('contractors')">🖨️ Print</button>
       </div>
     </div>
     <div class="card-body">
@@ -879,6 +879,9 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
 </div>
 
 <script>
+// ===== EMBEDDED DATA =====
+const EMBEDDED_DATA = {"settings":{"company":"Malka Noor Residency","ceo":"Sohail Ahmed","address":"FL-2, Block 5, Saadi Town, Scheme 33, Karachi","phone":"0321-2447324","startdate":"2022-12-01","vprefix":"MNR","waToggles":{"exp":true,"flat":true,"monthly":true,"partner":false},"waphone":"+923212447324"},"partnerDefs":[{"id":"sohail","name":"Sohail Ahmed","share":62.5},{"id":"ummah","name":"Ummah Welfare Trust","share":25},{"id":"razzaq","name":"Haji Abdul Razzaq","share":12.5}],"partnerOpening":{"razzaq":44999837,"sohail":270006000,"ummah":135046378},"opening":{"blocks":817300,"cement":43420930,"construction":22144706,"desc_blocks":"","desc_cement":"","desc_construction":"","desc_hardware":"","desc_labour":"","desc_office":"","desc_reeti":"","desc_salary":"","desc_speed":"","desc_steel":"","hardware":2968294,"labour":119509687,"office":8758432,"reeti":19262917,"salary":19805854,"speed":68874993,"steel":277598970},"expenses":[{"amount":4440,"category":"cement","createdAt":"2026-05-16T04:52:39.223Z","date":"2026-05-02","id":"e1778907159222","mode":"Online","remarks":"3 ABGS OF CEMENT RECEIVED AT MNR PROJECT BANK TID 035101","vendor":"DG OPC CEMENT","vno":"AMNUAL"},{"amount":1500,"category":"labour","createdAt":"2026-05-16T04:59:37.694Z","date":"2026-05-04","id":"e1778907577694","mode":"Online","remarks":"MNR SITE EXTRA LABOUR REF#260034260444","vendor":"SITE EXTRA LABOUR WORK","vno":"MANUAL"},{"amount":1696,"category":"salary","createdAt":"2026-05-16T05:02:11.390Z","date":"2026-05-07","id":"e1778907731390","mode":"Online","remarks":"KE BILL PAID BY SOHAIL BHIA TID 966807","vendor":"KE BILL","vno":"MANUAL"},{"amount":3589,"category":"salary","createdAt":"2026-05-16T08:20:49.947Z","date":"2026-05-11","id":"e1778919649947","mode":"Online","remarks":"payment made from MBL refrence:401148","vendor":"Office optex bill","vno":"Manual"},{"amount":1500,"category":"salary","createdAt":"2026-05-16T08:22:20.932Z","date":"2026-05-07","id":"e1778919740932","mode":"Online","remarks":"Payment made from bank alfalah refrence:331018904426","vendor":"Ameer Baksh","vno":"Manual"},{"amount":15000,"category":"salary","createdAt":"2026-05-16T08:23:37.028Z","date":"2026-05-07","id":"e1778919817028","mode":"Online","remarks":"payment made from bank alfalah reference:206367844601","vendor":"Ameer baksh","vno":"Manual"},{"amount":10466,"category":"salary","createdAt":"2026-05-16T08:28:30.941Z","date":"2026-05-07","id":"e1778920110941","mode":"Online","remarks":"payment made from MBL reference:397830","vendor":"Office Maintennace","vno":"Manual"},{"amount":2040,"category":"salary","createdAt":"2026-05-16T08:35:47.936Z","date":"2026-05-07","id":"e1778920547936","mode":"Online","remarks":"Payment made from MBL","vendor":"PTCL Bill","vno":"Manual"},{"amount":9000,"category":"salary","createdAt":"2026-05-16T08:37:12.868Z","date":"2026-05-13","id":"e1778920632868","mode":"Online","remarks":"payment made from bank alfalah Refrence:FT261330Y2BOBL6K ","vendor":"Ameer baksh","vno":"Manual"},{"amount":50000,"category":"salary","createdAt":"2026-05-16T12:18:43.470Z","date":"2026-05-16","id":"e1778933923470","mode":"Cash","remarks":"Payment made to Wahab agt purchase of ERP Software","vendor":"WAHAB SOFTWARE","vno":"Manual"},{"amount":5000,"category":"salary","createdAt":"2026-05-18T12:15:10.166Z","date":"2026-05-18","id":"e1779106510166","mode":"Online","remarks":"Payment to Ameer baksh from bank alfalah refrence:540325026849","vendor":"Ameer Baksh","vno":"Manual"}],"flats":[{"createdAt":"2026-05-16T05:52:14.978Z","flatno":"108","floor":"1ST","id":"f1778910734978","name":"BILAL SHAH","payments":[{"amount":2000000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":19100000,"type":"A"},{"createdAt":"2026-05-16T05:53:16.482Z","flatno":"118","floor":"1ST","id":"f1778910796482","name":"DANISH IQBAL WIFE","payments":[{"amount":600000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":23200000,"type":"A"},{"createdAt":"2026-05-16T05:54:17.572Z","flatno":"318","floor":"3RD","id":"f1778910857572","name":"ABDULLAH","payments":[{"amount":6000000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":18320000,"type":"A"},{"createdAt":"2026-05-16T05:55:32.967Z","flatno":"321","floor":"3RD","id":"f1778910932967","name":"ISMAIL ABDUL RAZZAQ","payments":[{"amount":6000000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":18320000,"type":"A"},{"createdAt":"2026-05-16T05:56:44.149Z","flatno":"418","floor":"4TH","id":"f1778911004149","name":"NOOR AHMED","payments":[{"amount":17000000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":19260000,"type":"A"},{"createdAt":"2026-05-16T05:58:50.726Z","flatno":"421","floor":"4TH","id":"f1778911130726","name":"AREEBA SALEEM","payments":[{"amount":250000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":19600000,"type":"A"},{"createdAt":"2026-05-16T05:59:39.094Z","flatno":"205","floor":"2ND","id":"f1778911179094","name":"MUAHMMAD SAHIL","payments":[{"amount":250000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":19600000,"type":"A"},{"createdAt":"2026-05-16T06:00:33.722Z","flatno":"218","floor":"2ND","id":"f1778911233722","name":"MUHAMMAD WAQAS KHAN NIAZI","payments":[{"amount":7400000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":20900000,"type":"A"},{"createdAt":"2026-05-16T06:01:38.099Z","flatno":"105","floor":"1ST","id":"f1778911298099","name":"NOOR AHMED NEW","payments":[{"amount":600000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":20000000,"type":"A"},{"createdAt":"2026-05-16T06:02:24.028Z","flatno":"121","floor":"1ST","id":"f1778911344028","name":"KASHIF MANZOOR NEW","payments":[{"amount":600000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":20000000,"type":"A"},{"createdAt":"2026-05-16T06:03:15.401Z","flatno":"308","floor":"3RD","id":"f1778911395401","name":"SHOUKAT HUSSAIN","payments":[{"amount":9000000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":19460000,"type":"A"},{"createdAt":"2026-05-16T06:03:59.251Z","flatno":"213","floor":"2ND","id":"f1778911439251","name":"BANSI LAL","payments":[{"amount":2750000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":14400000,"type":"B"},{"createdAt":"2026-05-16T06:04:44.007Z","flatno":"109","floor":"1ST","id":"f1778911484007","name":"MUHAMMAD HARIS","payments":[{"amount":4000000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":12300000,"type":"B"},{"createdAt":"2026-05-16T06:05:44.601Z","flatno":"416","floor":"4TH","id":"f1778911544601","name":"FAIZAN TARIQ","payments":[{"amount":1650000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":11700000,"type":"B"},{"createdAt":"2026-05-16T06:06:25.804Z","flatno":"117","floor":"1ST","id":"f1778911585804","name":"AISHA ARSHAD","payments":[{"amount":2800000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":11500000,"type":"B"},{"createdAt":"2026-05-16T06:07:08.503Z","flatno":"217","floor":"2ND","id":"f1778911628503","name":"MUHAMMAD SALEEM","payments":[{"amount":600085,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":12105000,"type":"B"},{"createdAt":"2026-05-16T06:07:55.635Z","flatno":"317","floor":"3RD","id":"f1778911675635","name":"MUHAMMAD ARIF","payments":[{"amount":2900000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":11855000,"type":"B"},{"createdAt":"2026-05-16T06:08:38.110Z","flatno":"212","floor":"2ND","id":"f1778911718110","name":"AKBER HUSSAIN","payments":[{"amount":250000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13700000,"type":"B"},{"createdAt":"2026-05-16T06:09:13.507Z","flatno":"215","floor":"2ND","id":"f1778911753507","name":"MUHAMMAD RIAZ","payments":[{"amount":500000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13700000,"type":"B"},{"createdAt":"2026-05-16T06:10:14.422Z","flatno":"216","floor":"2ND","id":"f1778911814422","name":"ASIF","payments":[{"amount":500000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13700000,"type":"B"},{"createdAt":"2026-05-16T06:10:46.856Z","flatno":"413","floor":"4TH","id":"f1778911846856","name":"MOMINA BIBI","payments":[{"amount":100000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":11700000,"type":"B"},{"createdAt":"2026-05-16T06:11:35.736Z","flatno":"417","floor":"4TH","id":"f1778911895736","name":"HIRA MOHSIN","payments":[{"amount":500000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13400000,"type":"B"},{"createdAt":"2026-05-16T06:12:27.096Z","flatno":"309","floor":"3RD","id":"f1778911947096","name":"WAJIHA MUHAMMAD","payments":[{"amount":6600000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13200000,"type":"B"},{"createdAt":"2026-05-16T06:13:11.002Z","flatno":"320","floor":"3RD","id":"f1778911991002","name":"ISMAIL","payments":[{"amount":6000000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13010000,"type":"B-1"},{"createdAt":"2026-05-16T06:14:06.073Z","flatno":"219","floor":"2ND","id":"f1778912046073","name":"M.ILLYAS SHEIKH","payments":[{"amount":6800000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":12000000,"type":"B-1"},{"createdAt":"2026-05-16T06:14:46.326Z","flatno":"319","floor":"3RD","id":"f1778912086326","name":"ABDULLAH","payments":[{"amount":6000000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13010000,"type":"B-1"},{"createdAt":"2026-05-16T06:15:28.377Z","flatno":"406","floor":"4TH","id":"f1778912128377","name":"IRSHAD","payments":[{"amount":3800000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13010000,"type":"B-1"},{"createdAt":"2026-05-16T06:15:59.556Z","flatno":"407","floor":"4TH","id":"f1778912159556","name":"IRSHAD","payments":[{"amount":3800000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13010000,"type":"B-1"},{"createdAt":"2026-05-16T06:16:44.389Z","flatno":"220","floor":"2ND","id":"f1778912204389","name":"ABDULLAH ISMAIL","payments":[{"amount":3071060,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":11900000,"type":"B-1"},{"createdAt":"2026-05-16T06:17:26.730Z","flatno":"420","floor":"4TH","id":"f1778912246730","name":"MUHAMMAD ARSAL","payments":[{"amount":250000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13100000,"type":"B-1"},{"createdAt":"2026-05-16T06:18:20.647Z","flatno":"206","floor":"2ND","id":"f1778912300647","name":"MUHAMMAD SALEEM","payments":[{"amount":250000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13100000,"type":"B-1"},{"createdAt":"2026-05-16T06:18:54.408Z","flatno":"307","floor":"3RD","id":"f1778912334408","name":"RABIA ZAHID","payments":[{"amount":4300000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13000000,"type":"B-1"},{"createdAt":"2026-05-16T06:19:30.758Z","flatno":"419","floor":"4TH","id":"f1778912370758","name":"KASHIF","payments":[{"amount":12400000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":13000000,"type":"B-1"},{"createdAt":"2026-05-16T06:22:31.425Z","flatno":"127","floor":"1ST","id":"f1778912551425","name":"SAQLAIN ABBAS","payments":[{"amount":1255000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":8184000,"type":"C"},{"createdAt":"2026-05-16T06:23:15.643Z","flatno":"125","floor":"1ST","id":"f1778912595643","name":"SAIRA ARSHAD","payments":[{"amount":2900000,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":9800000,"type":"C-1"},{"createdAt":"2026-05-16T06:24:05.562Z","flatno":"222","floor":"2ND","id":"f1778912645562","name":"SHURAIN ISMAIL","payments":[{"amount":3190350,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":9200000,"type":"C-1"},{"createdAt":"2026-05-16T06:24:44.235Z","flatno":"103","floor":"1ST","id":"f1778912684235","name":"ALI AHMED JOKHIO","payments":[{"amount":504800,"date":"2026-04-30","mode":"Online","remarks":"UPDATED TILL APRIL 2026"}],"saleValue":11000000,"type":"C-1"}],"monthly":[],"contractors":[],"partners":[],"voucherSeq":1};
+
 // ===== DATA STRUCTURE =====
 let D = {
   settings: {
@@ -911,7 +914,7 @@ const CATS = {
   construction:'🏢 Construction & Misc',office:'🏠 Office File'
 };
 
-const FB = 'https://malkanoorrerp-default-rtdb.firebaseio.com';
+const FB = 'https://malka-noor-residency-default-rtdb.firebaseio.com';
 let lastVoucherData = null;
 
 // ===== LOGIN =====
@@ -962,21 +965,35 @@ async function saveDB(){
 }
 
 async function loadAll(){
+  // 1. Pehle localStorage check karo
+  const local=localStorage.getItem('mnr3_data')||localStorage.getItem('mnr2_data');
+  if(local){
+    try{
+      const ld=JSON.parse(local);
+      if(ld&&ld.flats&&ld.flats.length>0){
+        D=mergeDefaults(ld);
+        showSync('📱 Local data loaded!','#1a7a3a');
+        renderAll();
+        return;
+      }
+    }catch(x){}
+  }
+  // 2. Firebase try karo
   try{
     const r=await fetch(FB+'/mnr3_data.json');
     const d=await r.json();
-    if(d&&d.expenses){
+    if(d&&d.flats&&d.flats.length>0){
       D=mergeDefaults(d);
       localStorage.setItem('mnr3_data',JSON.stringify(D));
       showSync('☁️ Cloud data loaded!','#1a7a3a');
-    } else {
-      const local=localStorage.getItem('mnr3_data')||localStorage.getItem('mnr2_data');
-      if(local){ const ld=JSON.parse(local); D=mergeDefaults(ld); }
+      renderAll();
+      return;
     }
-  }catch(e){
-    const local=localStorage.getItem('mnr3_data')||localStorage.getItem('mnr2_data');
-    if(local){ try{ const ld=JSON.parse(local); D=mergeDefaults(ld); }catch(x){} }
-  }
+  }catch(e){}
+  // 3. Embedded data use karo (backup)
+  D=mergeDefaults(EMBEDDED_DATA);
+  localStorage.setItem('mnr3_data',JSON.stringify(D));
+  showSync('✅ Data loaded!','#1a7a3a');
   renderAll();
 }
 
@@ -1222,7 +1239,6 @@ function renderExpenses(){
       <td><span class="badge b-blue">${e.mode||'Cash'}</span></td>
       <td>${e.remarks||'—'}</td>
       <td class="no-print">
-        <button class="btn btn-gold btn-xs" onclick="editExpense('${e.id}')">✏️ Edit</button>
         <button class="btn btn-navy btn-xs" onclick="printExpVoucher('${e.id}')">🖨️</button>
         <button class="btn btn-red btn-xs" onclick="deleteExpense('${e.id}')">Del</button>
       </td>
@@ -1232,28 +1248,6 @@ function renderExpenses(){
 }
 
 function deleteExpense(id){if(!confirm('Delete?'))return;D.expenses=D.expenses.filter(x=>x.id!==id);saveDB();renderExpStats();renderExpenses();}
-
-function editExpense(id){
-  const e=D.expenses.find(x=>x.id===id);
-  if(!e) return;
-  // Fill form with existing data
-  document.getElementById('exp-cat').value=e.category||'steel';
-  document.getElementById('exp-date').value=e.date||today();
-  document.getElementById('exp-vendor').value=e.vendor||'';
-  document.getElementById('exp-amount').value=e.amount||'';
-  document.getElementById('exp-vno').value=e.vno||'';
-  document.getElementById('exp-mode').value=e.mode||'Cash';
-  document.getElementById('exp-remarks').value=e.remarks||'';
-  // Delete old entry
-  D.expenses=D.expenses.filter(x=>x.id!==id);
-  saveDB();
-  renderExpenses();
-  // Scroll to form
-  document.getElementById('exp-alert').className='alert alert-success';
-  document.getElementById('exp-alert').textContent='✏️ Entry edit mode mein hai — changes kar ke Save karein!';
-  document.getElementById('exp-alert').style.display='block';
-  window.scrollTo({top:0,behavior:'smooth'});
-}
 
 function previewVoucher(){
   const vendor=document.getElementById('exp-vendor').value.trim();
@@ -1749,43 +1743,42 @@ function sendWhatsApp(type, data){
   const now=new Date().toLocaleDateString('en-PK');
 
   if(type==='expense'){
-    const catClean=(CATS[data.category]||data.category).replace(/[\u{1F300}-\u{1FFFF}]/gu,'').trim();
-    msg=`*${co} — Expense Entry*\n`+
-        `Date: ${data.date}\n`+
-        `Category: ${catClean}\n`+
-        `Vendor: ${data.vendor}\n`+
-        `Amount: *Rs. ${fmt(data.amount)}*\n`+
-        `Voucher: ${data.vno||'—'}\n`+
-        `Mode: ${data.mode||'Cash'}\n`+
-        (data.remarks?`Remarks: ${data.remarks}\n`:'')+
-        `Entered: ${now}`;
+    msg=`🏢 *${co} — Expense Entry*\n`+
+        `📅 Date: ${data.date}\n`+
+        `📂 Category: ${(CATS[data.category]||data.category).replace(/[^\w\s&]/g,'').trim()}\n`+
+        `🏷️ Vendor: ${data.vendor}\n`+
+        `💰 Amount: *Rs. ${fmt(data.amount)}*\n`+
+        `🔖 Voucher: ${data.vno||'—'}\n`+
+        `💳 Mode: ${data.mode||'Cash'}\n`+
+        (data.remarks?`📝 Remarks: ${data.remarks}\n`:'')+
+        `✅ Entered: ${now}`;
   } else if(type==='flat'){
-    msg=`*${co} — Flat Payment*\n`+
-        `Date: ${data.date}\n`+
-        `Flat No: *${data.flatno}*\n`+
-        `Client: ${data.name}\n`+
-        `Payment: *Rs. ${fmt(data.payAmt)}*\n`+
-        `Mode: ${data.mode||'Cash'}\n`+
-        (data.remarks?`Remarks: ${data.remarks}\n`:'')+
-        `Entered: ${now}`;
+    msg=`🏢 *${co} — Flat Payment*\n`+
+        `📅 Date: ${data.date}\n`+
+        `🏠 Flat No: *${data.flatno}*\n`+
+        `👤 Client: ${data.name}\n`+
+        `💰 Payment: *Rs. ${fmt(data.payAmt)}*\n`+
+        `💳 Mode: ${data.mode||'Cash'}\n`+
+        (data.remarks?`📝 Remarks: ${data.remarks}\n`:'')+
+        `✅ Entered: ${now}`;
   } else if(type==='partner'){
-    msg=`*${co} — Partner Entry*\n`+
-        `Date: ${data.date}\n`+
-        `Partner: *${getPartnerName(data.partner)}*\n`+
-        `Type: ${data.type}\n`+
-        `Amount: *Rs. ${fmt(data.amount)}*\n`+
-        `Mode: ${data.mode}\n`+
-        (data.desc?`Desc: ${data.desc}\n`:'')+
-        `Entered: ${now}`;
+    msg=`🏢 *${co} — Partner Entry*\n`+
+        `📅 Date: ${data.date}\n`+
+        `👥 Partner: *${getPartnerName(data.partner)}*\n`+
+        `📌 Type: ${data.type}\n`+
+        `💰 Amount: *Rs. ${fmt(data.amount)}*\n`+
+        `💳 Mode: ${data.mode}\n`+
+        (data.desc?`📝 Desc: ${data.desc}\n`:'')+
+        `✅ Entered: ${now}`;
   } else if(type==='monthly'){
     const net=Number(data.recv||0)-Number(data.exp||0);
-    msg=`*${co} — Monthly Closing*\n`+
-        `Month: *${data.month}*\n`+
-        `Expenses: Rs. ${fmt(data.exp)}\n`+
-        `Received: Rs. ${fmt(data.recv)}\n`+
-        `Net: *Rs. ${fmt(net)}*\n`+
-        (data.remarks?`Remarks: ${data.remarks}\n`:'')+
-        `Closed: ${now}`;
+    msg=`🏢 *${co} — Monthly Closing*\n`+
+        `📅 Month: *${data.month}*\n`+
+        `💸 Expenses: Rs. ${fmt(data.exp)}\n`+
+        `✅ Received: Rs. ${fmt(data.recv)}\n`+
+        `📊 Net: *Rs. ${fmt(net)}*\n`+
+        (data.remarks?`📝 Remarks: ${data.remarks}\n`:'')+
+        `🕐 Closed: ${now}`;
   }
 
   const encoded=encodeURIComponent(msg);
@@ -1853,6 +1846,228 @@ function saveSettings(){
 function resetAll(){
   D={settings:D.settings,partnerDefs:D.partnerDefs,partnerOpening:{},opening:{},expenses:[],flats:[],monthly:[],contractors:[],partners:[],voucherSeq:1};
   saveDB();renderAll();closeSettingsModal();alert('✅ Data reset!');
+}
+
+// ===== PRINT SECTION =====
+function printSection(section){
+  const co=D.settings.company||'Malka Noor Residency';
+  const addr=D.settings.address||'';
+  const phone=D.settings.phone||'';
+  const printDate=new Date().toLocaleString('en-PK');
+
+  const baseCSS=`
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+      :root{--gold:#b8943f;--gold2:#d4af5a;--dark:#0f1f3d;--dark2:#1a2f55;--border:#dde6f0;--text:#1a2340;--text2:#5a6a80;--green:#1a7a3a;--red:#c0392b;--blue:#1565c0;}
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{font-family:'Outfit',sans-serif;background:#fff;color:var(--text);padding:24px 32px;}
+      .print-header{text-align:center;border-bottom:3px double var(--dark);padding-bottom:14px;margin-bottom:20px;}
+      .print-header h1{font-size:22px;font-weight:900;color:var(--dark);}
+      .print-header p{font-size:11px;color:var(--text2);margin-top:3px;}
+      .print-header .report-title{display:inline-block;background:var(--dark);color:var(--gold);padding:4px 16px;border-radius:20px;font-size:12px;font-weight:700;margin-top:8px;}
+      .print-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:16px;}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;}
+      thead tr{background:var(--dark);}
+      thead th{color:var(--gold);padding:8px 10px;text-align:left;font-weight:700;font-size:11px;}
+      tbody tr{border-bottom:1px solid var(--border);}
+      tbody td{padding:7px 10px;vertical-align:middle;}
+      tfoot tr{background:#f0f4fa;font-weight:700;}
+      tfoot td{padding:8px 10px;border-top:2px solid var(--border);}
+      .amount{font-weight:700;}
+      .text-green{color:var(--green);}
+      .text-red{color:var(--red);}
+      .text-gold{color:var(--gold);}
+      .text-blue{color:var(--blue);}
+      .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;}
+      .b-gold{background:rgba(184,148,63,.15);color:#8a6e2a;}
+      .b-blue{background:rgba(26,47,85,.1);color:var(--dark);}
+      .b-green{background:rgba(26,122,58,.12);color:#155a2c;}
+      .b-red{background:rgba(192,57,43,.12);color:#a02a1e;}
+      .section-title{font-size:15px;font-weight:800;color:var(--dark);margin:16px 0 8px;border-left:4px solid var(--gold);padding-left:10px;}
+      .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+      .stat-box{border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:4px solid var(--gold);}
+      .stat-box .lbl{font-size:9px;text-transform:uppercase;color:var(--text2);letter-spacing:.5px;font-weight:700;}
+      .stat-box .val{font-size:16px;font-weight:800;color:var(--dark);margin-top:4px;}
+      .recon-block{background:#f8f9ff;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid rgba(26,47,85,.1);}
+      .recon-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+      .recon-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--border);font-size:12px;}
+      .recon-row:last-child{border-bottom:none;}
+      .recon-total{display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:800;border-top:2px solid var(--dark);margin-top:6px;}
+      .sign-row{display:flex;gap:30px;margin-top:40px;padding-top:16px;border-top:2px solid var(--dark);}
+      .sign-box{flex:1;text-align:center;font-size:11px;font-weight:700;color:var(--text2);}
+      .sign-box .line{height:36px;border-bottom:1px solid var(--dark);margin-bottom:5px;}
+      .partner-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+      .partner-box{border:1px solid var(--border);border-radius:8px;padding:10px;border-top:3px solid var(--gold);}
+      .partner-box .pname{font-size:13px;font-weight:800;color:var(--dark);}
+      .partner-box .prow{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);}
+      .partner-box .prow:last-child{border-bottom:none;}
+      @media print{@page{margin:1cm;}}
+    </style>`;
+
+  const printHeader=(title)=>`
+    <div class="print-header">
+      <h1>${co}</h1>
+      <p>${addr} &nbsp;|&nbsp; ${phone}</p>
+      <div class="report-title">${title}</div>
+    </div>
+    <div class="print-meta"><span>Printed: ${printDate}</span><span>System: MNR ERP v2</span></div>`;
+
+  let body='';
+
+  if(section==='opening'){
+    let total=0;
+    const rows=Object.entries(CATS).map(([k,v])=>{
+      const amt=D.opening[k]||0; total+=amt;
+      return`<tr><td>${v}</td><td class="amount ${amt>0?'text-gold':''}">${amt>0?'Rs. '+fmt(amt):'—'}</td><td>${D.opening['desc_'+k]||'—'}</td></tr>`;
+    }).join('');
+    const partnerRows=D.partnerDefs.map(p=>`<tr><td><b>${p.name}</b></td><td>${p.share}%</td><td class="amount text-green">Rs. ${fmt(D.partnerOpening[p.id]||0)}</td></tr>`).join('');
+    body=printHeader('OPENING BALANCE — DECEMBER 2022')+
+    `<div class="section-title">📊 Category-wise Opening Balance</div>
+    <table><thead><tr><th>Category</th><th>Amount (Rs.)</th><th>Description</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><td><b>TOTAL</b></td><td class="amount text-gold"><b>Rs. ${fmt(total)}</b></td><td></td></tr></tfoot></table>
+    <div class="section-title">👥 Partner Opening Payments</div>
+    <table><thead><tr><th>Partner</th><th>Share %</th><th>Opening Payment (Rs.)</th></tr></thead>
+    <tbody>${partnerRows}</tbody></table>`;
+
+  } else if(section==='expenses'){
+    const filter=document.getElementById('exp-filter')?.value||'all';
+    const q=(document.getElementById('exp-search')?.value||'').toLowerCase();
+    const from=document.getElementById('exp-from')?.value;
+    const to=document.getElementById('exp-to')?.value;
+    let filtered=D.expenses.filter(e=>{
+      if(filter!=='all'&&e.category!==filter) return false;
+      if(q&&!e.vendor.toLowerCase().includes(q)&&!(e.remarks||'').toLowerCase().includes(q)) return false;
+      if(from&&e.date<from) return false;
+      if(to&&e.date>to) return false;
+      return true;
+    });
+    const sorted=[...filtered].sort((a,b)=>a.date?.localeCompare(b.date));
+    let tot=0;
+    const rows=sorted.map((e,i)=>{
+      tot+=Number(e.amount);
+      return`<tr><td>${i+1}</td><td>${e.date}</td><td>${CATS[e.category]||e.category}</td><td>${e.vendor}</td><td class="amount text-red">Rs. ${fmt(e.amount)}</td><td><b>${e.vno||'—'}</b></td><td>${e.mode||'Cash'}</td><td>${e.remarks||'—'}</td></tr>`;
+    }).join('');
+    const filterLabel=filter==='all'?'All Categories':(CATS[filter]||filter);
+    const dateLabel=(from||to)?` | Date: ${from||'Start'} to ${to||'End'}`:'';
+    body=printHeader('EXPENSE RECORDS — '+filterLabel+dateLabel)+
+    `<div class="section-title">💸 Expense Records (${sorted.length} entries)</div>
+    <table><thead><tr><th>#</th><th>Date</th><th>Category</th><th>Vendor/Description</th><th>Amount</th><th>Voucher</th><th>Mode</th><th>Remarks</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No records found</td></tr>'}</tbody>
+    <tfoot><tr><td colspan="4"><b>TOTAL (${sorted.length} records)</b></td><td class="amount text-red"><b>Rs. ${fmt(tot)}</b></td><td colspan="3"></td></tr></tfoot></table>`;
+
+  } else if(section==='flats'){
+    const q=(document.getElementById('fl-search')?.value||'').toLowerCase();
+    const filtered=D.flats.filter(f=>!q||f.name.toLowerCase().includes(q)||f.flatno.toLowerCase().includes(q));
+    let totSale=0,totColl=0;
+    const rows=filtered.map((f,i)=>{
+      const coll=f.payments.reduce((s,p)=>s+Number(p.amount||0),0);
+      const rem=Number(f.saleValue||0)-coll;
+      totSale+=Number(f.saleValue||0);totColl+=coll;
+      return`<tr><td>${i+1}</td><td><b>${f.name}</b></td><td><b>${f.flatno}</b></td><td>${f.floor}</td><td>${f.type}</td><td class="amount">Rs. ${fmt(f.saleValue)}</td><td class="text-green amount">Rs. ${fmt(coll)}</td><td class="${rem>0?'text-red':'text-green'} amount">Rs. ${fmt(rem)}</td></tr>`;
+    }).join('');
+    const totRem=totSale-totColl;
+    body=printHeader('FLAT COLLECTION REPORT')+
+    `<div class="stat-grid">
+      <div class="stat-box"><div class="lbl">Total Flats</div><div class="val">${D.flats.length}</div></div>
+      <div class="stat-box" style="border-left-color:var(--gold)"><div class="lbl">Total Sale Value</div><div class="val text-gold">Rs. ${fmt(totSale)}</div></div>
+      <div class="stat-box" style="border-left-color:var(--green)"><div class="lbl">Total Collected</div><div class="val text-green">Rs. ${fmt(totColl)}</div></div>
+      <div class="stat-box" style="border-left-color:var(--red)"><div class="lbl">Remaining</div><div class="val text-red">Rs. ${fmt(totRem)}</div></div>
+    </div>
+    <div class="section-title">🏠 Flat Collection Records</div>
+    <table><thead><tr><th>#</th><th>Client</th><th>Flat</th><th>Floor</th><th>Type</th><th>Sale Value</th><th>Collected</th><th>Remaining</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No records</td></tr>'}</tbody>
+    <tfoot><tr><td colspan="5"><b>TOTAL</b></td><td class="amount"><b>Rs. ${fmt(totSale)}</b></td><td class="amount text-green"><b>Rs. ${fmt(totColl)}</b></td><td class="amount text-red"><b>Rs. ${fmt(totRem)}</b></td></tr></tfoot></table>`;
+
+  } else if(section==='monthly'){
+    const sorted=[...D.monthly].sort((a,b)=>a.month.localeCompare(b.month));
+    let totExp=0,totRecv=0;
+    const partnerTotals={};D.partnerDefs.forEach(p=>partnerTotals[p.id]=0);
+    const partnerTH=D.partnerDefs.map(p=>`<th>${p.name} (${p.share}%)</th>`).join('');
+    const rows=sorted.map((m,i)=>{
+      const net=Number(m.recv||0)-Number(m.exp||0);
+      totExp+=Number(m.exp);totRecv+=Number(m.recv);
+      const pCols=D.partnerDefs.map(p=>{const s=net*(p.share/100);partnerTotals[p.id]+=s;return`<td class="amount ${s>=0?'text-green':'text-red'}">Rs. ${fmt(s)}</td>`;}).join('');
+      return`<tr><td>${i+1}</td><td><b>${m.month}</b></td><td class="text-red amount">Rs. ${fmt(m.exp)}</td><td class="text-green amount">Rs. ${fmt(m.recv)}</td><td class="${net>=0?'text-green':'text-red'} amount">Rs. ${fmt(net)}</td>${pCols}<td>${m.remarks||'—'}</td></tr>`;
+    }).join('');
+    const totNet=totRecv-totExp;
+    const pFoot=D.partnerDefs.map(p=>`<td class="amount">Rs. ${fmt(partnerTotals[p.id])}</td>`).join('');
+    body=printHeader('MONTHLY CLOSING REPORT')+
+    `<div class="section-title">📅 Monthly Closing Records (${sorted.length} months)</div>
+    <table><thead><tr><th>#</th><th>Month</th><th>Expenses</th><th>Flat Received</th><th>Net</th>${partnerTH}<th>Remarks</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="20" style="text-align:center;padding:20px;color:#999;">No records</td></tr>'}</tbody>
+    <tfoot><tr><td colspan="2"><b>TOTAL</b></td><td class="amount text-red"><b>Rs. ${fmt(totExp)}</b></td><td class="amount text-green"><b>Rs. ${fmt(totRecv)}</b></td><td class="amount"><b>Rs. ${fmt(totNet)}</b></td>${pFoot}<td></td></tr></tfoot></table>`;
+
+  } else if(section==='partners'){
+    const filter=document.getElementById('pt-filter')?.value||'all';
+    const filtered=filter==='all'?D.partners:D.partners.filter(p=>p.partner===filter);
+    const sorted=[...filtered].sort((a,b)=>a.date?.localeCompare(b.date));
+    // Partner summary cards
+    const openingTotal=totalOpening();
+    const expTotal=D.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+    const totalExpAmt=openingTotal+expTotal;
+    const totalColl=D.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+    const remaining=totalExpAmt-totalColl;
+    const pCards=D.partnerDefs.map(p=>{
+      const due=remaining*(p.share/100);
+      const openPaid=D.partnerOpening[p.id]||0;
+      const newPaid=D.partners.filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+      const paid=openPaid+newPaid;
+      const rem=due-paid;
+      return`<div class="partner-box"><div class="pname">${p.name}</div><div style="font-size:10px;color:var(--text2);margin-bottom:6px;">Share: ${p.share}%</div>
+        <div class="prow"><span>Total Due</span><span class="amount text-gold">Rs. ${fmt(due)}</span></div>
+        <div class="prow"><span>Opening Paid</span><span class="amount text-blue">Rs. ${fmt(openPaid)}</span></div>
+        <div class="prow"><span>New Payments</span><span class="amount text-green">Rs. ${fmt(newPaid)}</span></div>
+        <div class="prow"><span>Total Paid</span><span class="amount text-green">Rs. ${fmt(paid)}</span></div>
+        <div class="prow"><span>Remaining</span><span class="amount ${rem>0?'text-red':'text-green'}">Rs. ${fmt(Math.abs(rem))}</span></div>
+      </div>`;
+    }).join('');
+    let bal=0;
+    const rows=sorted.map((p,i)=>{
+      bal+=p.type==='payment'?Number(p.amount):-Number(p.amount);
+      return`<tr><td>${i+1}</td><td>${p.date}</td><td><b>${getPartnerName(p.partner)}</b></td><td>${p.desc||'—'}</td><td>${p.mode}</td><td class="text-red amount">${p.type==='payment'?'Rs. '+fmt(p.amount):''}</td><td class="text-green amount">${p.type!=='payment'?'Rs. '+fmt(p.amount):''}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;
+    }).join('');
+    body=printHeader('PARTNER LEDGER REPORT')+
+    `<div class="section-title">👥 Partner Share Summary</div>
+    <div class="partner-summary">${pCards}</div>
+    <div class="section-title">📒 Partner Ledger Entries</div>
+    <table><thead><tr><th>#</th><th>Date</th><th>Partner</th><th>Description</th><th>Mode</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No entries</td></tr>'}</tbody></table>`;
+
+  } else if(section==='recon'){
+    // Reuse the already-rendered reconciliation HTML
+    const reconBody=document.getElementById('recon-body')?.innerHTML||'';
+    body=printHeader('RECONCILIATION STATEMENT')+
+    `<div class="section-title">📋 Reconciliation Statement</div>${reconBody}`;
+
+  } else if(section==='contractors'){
+    const filter=document.getElementById('ct-filter')?.value||'all';
+    const filtered=filter==='all'?D.contractors:D.contractors.filter(c=>c.name===filter);
+    const sorted=[...filtered].sort((a,b)=>a.date?.localeCompare(b.date));
+    let bal=0,totDebit=0,totCredit=0;
+    const rows=sorted.map((c,i)=>{
+      bal+=Number(c.debit||0)-Number(c.credit||0);
+      totDebit+=Number(c.debit||0);totCredit+=Number(c.credit||0);
+      return`<tr><td>${i+1}</td><td>${c.date}</td><td><b>${c.name}</b></td><td>${c.type}</td><td>${c.desc||'—'}</td><td>${c.vno||'—'}</td><td class="text-red amount">${c.debit?'Rs. '+fmt(c.debit):''}</td><td class="text-green amount">${c.credit?'Rs. '+fmt(c.credit):''}</td><td class="${bal>=0?'text-red':'text-green'} amount">Rs. ${fmt(Math.abs(bal))}</td></tr>`;
+    }).join('');
+    body=printHeader('CONTRACTOR LEDGER REPORT')+
+    `<div class="section-title">🏗️ Contractor Ledger (${sorted.length} entries)</div>
+    <table><thead><tr><th>#</th><th>Date</th><th>Contractor</th><th>Type</th><th>Description</th><th>Voucher</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:20px;color:#999;">No records</td></tr>'}</tbody>
+    <tfoot><tr><td colspan="6"><b>TOTAL</b></td><td class="amount text-red"><b>Rs. ${fmt(totDebit)}</b></td><td class="amount text-green"><b>Rs. ${fmt(totCredit)}</b></td><td></td></tr></tfoot></table>`;
+  }
+
+  // Signature row for all sections
+  body+=`<div class="sign-row">
+    <div class="sign-box"><div class="line"></div>Prepared By</div>
+    <div class="sign-box"><div class="line"></div>Checked By</div>
+    <div class="sign-box"><div class="line"></div>Approved By (CEO)</div>
+  </div>`;
+
+  const win=window.open('','_blank','width=1000,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${co} — Print</title>${baseCSS}</head><body>${body}</body></html>`);
+  win.document.close();
+  win.onload=()=>{win.focus();win.print();}
 }
 </script>
 </body>
