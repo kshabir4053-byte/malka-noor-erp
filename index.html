@@ -965,7 +965,19 @@ async function saveDB(){
 }
 
 async function loadAll(){
-  // 1. Pehle localStorage check karo
+  // 1. Pehle Firebase try karo — hamesha latest data
+  try{
+    const r=await fetch(FB+'/mnr3_data.json');
+    const d=await r.json();
+    if(d&&d.flats&&d.flats.length>0){
+      D=mergeDefaults(d);
+      localStorage.setItem('mnr3_data',JSON.stringify(D));
+      showSync('☁️ Cloud data loaded!','#1a7a3a');
+      renderAll();
+      return;
+    }
+  }catch(e){}
+  // 2. Firebase fail — localStorage try karo
   const local=localStorage.getItem('mnr3_data')||localStorage.getItem('mnr2_data');
   if(local){
     try{
@@ -978,19 +990,7 @@ async function loadAll(){
       }
     }catch(x){}
   }
-  // 2. Firebase try karo
-  try{
-    const r=await fetch(FB+'/mnr3_data.json');
-    const d=await r.json();
-    if(d&&d.flats&&d.flats.length>0){
-      D=mergeDefaults(d);
-      localStorage.setItem('mnr3_data',JSON.stringify(D));
-      showSync('☁️ Cloud data loaded!','#1a7a3a');
-      renderAll();
-      return;
-    }
-  }catch(e){}
-  // 3. Embedded data use karo (backup)
+  // 3. Embedded data use karo (last resort)
   D=mergeDefaults(EMBEDDED_DATA);
   localStorage.setItem('mnr3_data',JSON.stringify(D));
   showSync('✅ Data loaded!','#1a7a3a');
