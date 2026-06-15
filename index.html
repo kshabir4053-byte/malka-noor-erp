@@ -1669,7 +1669,10 @@ function renderFlats(){
       <td class="amount">Rs. ${fmt(f.saleValue)}</td>
       <td class="text-green amount">Rs. ${fmt(coll)}</td>
       <td class="${rem>0?'text-red':'text-green'} amount">Rs. ${fmt(rem)}</td>
-      <td class="no-print"><button class="btn btn-red btn-xs" onclick="deleteFlat('${f.id}')">Del</button></td>
+      <td class="no-print">
+        <button class="btn btn-gold btn-xs" onclick="editFlat('${f.id}')">✏️ Edit</button>
+        <button class="btn btn-red btn-xs" onclick="deleteFlat('${f.id}')">Del</button>
+      </td>
     </tr>`;
   }).join(''):'<tr><td colspan="9" class="empty">No flats found</td></tr>';
   const totRem=totSale-totColl;
@@ -1683,6 +1686,117 @@ function renderFlats(){
 }
 
 function deleteFlat(id){if(!confirm('Delete?'))return;D.flats=D.flats.filter(x=>x.id!==id);saveDB();renderFlats();}
+
+function editFlat(id){
+  const f=D.flats.find(x=>x.id===id);
+  if(!f) return;
+  const coll=f.payments.reduce((s,p)=>s+Number(p.amount||0),0);
+  const win=window.open('','_blank','width=500,height:600');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Edit Flat — ${f.name}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Outfit',sans-serif;background:#f0f4fb;padding:24px;}
+    h2{color:#0f1f3d;font-size:18px;font-weight:800;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #b8943f;}
+    .field{margin-bottom:14px;}
+    label{display:block;font-size:12px;font-weight:700;color:#5a6a80;text-transform:uppercase;margin-bottom:5px;}
+    input,select{width:100%;padding:10px 14px;border:2px solid #dde6f0;border-radius:10px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;}
+    input:focus,select:focus{border-color:#b8943f;}
+    .info{background:#fff;border-radius:10px;padding:12px;margin-bottom:16px;border-left:4px solid #b8943f;}
+    .info p{font-size:13px;color:#5a6a80;margin-bottom:4px;}
+    .info b{color:#0f1f3d;}
+    .btn{width:100%;padding:13px;background:linear-gradient(135deg,#0f1f3d,#1a2f55);color:#b8943f;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;margin-top:8px;}
+    .btn:hover{opacity:.9;}
+    .btn-red{background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;margin-top:6px;}
+    .payments{background:#fff;border-radius:10px;padding:14px;margin-bottom:16px;}
+    .payments h3{font-size:13px;font-weight:700;color:#5a6a80;text-transform:uppercase;margin-bottom:10px;}
+    .pay-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed #dde6f0;font-size:13px;}
+    .pay-row:last-child{border:none;}
+    .pay-del{background:#c0392b;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;}
+  </style></head><body>
+  <h2>✏️ Edit Flat — ${f.name}</h2>
+  <div class="info">
+    <p>Flat: <b>${f.flatno} (${f.floor})</b> | Type: <b>${f.type}</b></p>
+    <p>Total Collected: <b>Rs. ${coll.toLocaleString()}</b></p>
+  </div>
+  <div class="field"><label>Client Name</label><input id="e-name" value="${f.name}"></div>
+  <div class="field"><label>Flat No</label><input id="e-flatno" value="${f.flatno}"></div>
+  <div class="field"><label>Floor</label>
+    <select id="e-floor">
+      ${['Ground Floor','1ST','2ND','3RD','4TH','5TH','6TH','7TH','8TH','9TH','10TH'].map(fl=>`<option ${f.floor===fl?'selected':''}>${fl}</option>`).join('')}
+    </select>
+  </div>
+  <div class="field"><label>Type</label>
+    <select id="e-type">
+      ${['A','B','B-1','C','C-1'].map(t=>`<option ${f.type===t?'selected':''}>${t}</option>`).join('')}
+    </select>
+  </div>
+  <div class="field"><label>Sale Value (Rs.)</label><input id="e-saleValue" type="number" value="${f.saleValue}"></div>
+  
+  <div class="payments">
+    <h3>💰 Payment History</h3>
+    <div id="pay-list">
+      ${f.payments.map((p,pi)=>`
+        <div class="pay-row" id="pay-${pi}">
+          <span>${p.date} — Rs. ${Number(p.amount).toLocaleString()} (${p.mode})</span>
+          <button class="pay-del" onclick="delPay(${pi})">Del</button>
+        </div>`).join('')}
+    </div>
+    <div style="margin-top:10px;border-top:1px solid #dde6f0;padding-top:10px;">
+      <div class="field"><label>Add New Payment</label><input id="new-pay-amt" type="number" placeholder="Amount"></div>
+      <div class="field"><label>Date</label><input id="new-pay-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+      <div class="field"><label>Mode</label>
+        <select id="new-pay-mode"><option>Cash</option><option>Online</option><option>Cheque</option></select>
+      </div>
+      <div class="field"><label>Remarks</label><input id="new-pay-rem" placeholder="Optional"></div>
+    </div>
+  </div>
+  
+  <button class="btn" onclick="saveEdit()">💾 Save Changes</button>
+  
+  <script>
+    let payments=${JSON.stringify(f.payments)};
+    function delPay(i){
+      if(!confirm('Delete this payment?')) return;
+      payments.splice(i,1);
+      document.getElementById('pay-list').innerHTML=payments.map((p,pi)=>
+        '<div class="pay-row" id="pay-'+pi+'"><span>'+p.date+' — Rs. '+Number(p.amount).toLocaleString()+' ('+p.mode+')</span><button class="pay-del" onclick="delPay('+pi+')">Del</button></div>'
+      ).join('');
+    }
+    function saveEdit(){
+      const newAmt=Number(document.getElementById('new-pay-amt').value);
+      if(newAmt>0){
+        payments.push({
+          amount:newAmt,
+          date:document.getElementById('new-pay-date').value,
+          mode:document.getElementById('new-pay-mode').value,
+          remarks:document.getElementById('new-pay-rem').value
+        });
+      }
+      const updated={
+        id:'${f.id}',
+        name:document.getElementById('e-name').value,
+        flatno:document.getElementById('e-flatno').value,
+        floor:document.getElementById('e-floor').value,
+        type:document.getElementById('e-type').value,
+        saleValue:Number(document.getElementById('e-saleValue').value),
+        payments:payments,
+        createdAt:'${f.createdAt}'
+      };
+      window.opener.updateFlat(updated);
+      alert('✅ Saved!');
+      window.close();
+    }
+  <\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+function updateFlat(updated){
+  const idx=D.flats.findIndex(x=>x.id===updated.id);
+  if(idx>-1){ D.flats[idx]=updated; saveDB(); renderFlats(); }
+}
 
 // ===== CONTRACTORS =====
 function saveContractor(){
