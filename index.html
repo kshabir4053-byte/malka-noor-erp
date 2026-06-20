@@ -316,7 +316,10 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   </div>
 
   <div class="card">
-    <div class="card-header"><h3>📅 Recent Monthly Closings</h3></div>
+    <div class="card-header" style="justify-content:space-between;">
+      <h3>📅 Recent Monthly Closings</h3>
+      <button class="btn btn-gold btn-sm no-print" onclick="printSection('dashboard')">🖨️ Print Dashboard</button>
+    </div>
     <div class="card-body">
       <div class="tbl-wrap">
         <table>
@@ -616,6 +619,11 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
 
 <!-- ==================== PARTNERS ==================== -->
 <div class="page" id="pg-partners">
+  <!-- Share Calculation Breakdown -->
+  <div class="card no-print" id="partner-calc-box" style="margin-bottom:16px;">
+    <div class="card-header"><h3>🧮 Share Calculation — Tafseel</h3></div>
+    <div class="card-body" id="partner-calc-body" style="padding:16px 20px;"></div>
+  </div>
   <div class="partner-grid" id="partner-cards"></div>
 
   <div class="card">
@@ -914,7 +922,7 @@ const CATS = {
   construction:'🏢 Construction & Misc',office:'🏠 Office File'
 };
 
-const FB = 'https://malka-noor-residency-default-rtdb.firebaseio.com';
+const FB = 'https://malka-noor-erp-default-rtdb.firebaseio.com';
 let lastVoucherData = null;
 
 // ===== LOGIN =====
@@ -965,7 +973,19 @@ async function saveDB(){
 }
 
 async function loadAll(){
-  // 1. Pehle localStorage check karo
+  // 1. Pehle Firebase try karo — hamesha latest data
+  try{
+    const r=await fetch(FB+'/mnr3_data.json');
+    const d=await r.json();
+    if(d&&d.flats&&d.flats.length>0){
+      D=mergeDefaults(d);
+      localStorage.setItem('mnr3_data',JSON.stringify(D));
+      showSync('☁️ Cloud data loaded!','#1a7a3a');
+      renderAll();
+      return;
+    }
+  }catch(e){}
+  // 2. Firebase fail — localStorage try karo
   const local=localStorage.getItem('mnr3_data')||localStorage.getItem('mnr2_data');
   if(local){
     try{
@@ -978,19 +998,7 @@ async function loadAll(){
       }
     }catch(x){}
   }
-  // 2. Firebase try karo
-  try{
-    const r=await fetch(FB+'/mnr3_data.json');
-    const d=await r.json();
-    if(d&&d.flats&&d.flats.length>0){
-      D=mergeDefaults(d);
-      localStorage.setItem('mnr3_data',JSON.stringify(D));
-      showSync('☁️ Cloud data loaded!','#1a7a3a');
-      renderAll();
-      return;
-    }
-  }catch(e){}
-  // 3. Embedded data use karo (backup)
+  // 3. Embedded data use karo (last resort)
   D=mergeDefaults(EMBEDDED_DATA);
   localStorage.setItem('mnr3_data',JSON.stringify(D));
   showSync('✅ Data loaded!','#1a7a3a');
@@ -1428,6 +1436,59 @@ function renderPartnerCards(){
   const totalColl=D.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
   const remaining=totalExp-totalColl;
 
+  // Calculation breakdown box
+  const calcBox=document.getElementById('partner-calc-body');
+  if(calcBox){
+    const partnerCalcRows=D.partnerDefs.map(p=>{
+      const due=remaining*(p.share/100);
+      return`<tr>
+        <td><b>${p.name}</b></td>
+        <td style="text-align:center;">${p.share}%</td>
+        <td class="amount text-red">Rs. ${fmt(totalExp)}</td>
+        <td class="amount text-green">Rs. ${fmt(totalColl)}</td>
+        <td class="amount text-gold" style="font-size:14px;font-weight:800;">Rs. ${fmt(remaining)}</td>
+        <td class="amount" style="color:#8e44ad;font-size:14px;font-weight:800;">Rs. ${fmt(due)}</td>
+      </tr>`;
+    }).join('');
+    calcBox.innerHTML=`
+      <div style="background:linear-gradient(135deg,rgba(184,148,63,.07),rgba(184,148,63,.02));border:1px solid rgba(184,148,63,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--dark2);">
+        <b>Formula:</b> &nbsp; Total Expenses &nbsp;−&nbsp; Flat Collection &nbsp;=&nbsp; Net Balance &nbsp;→&nbsp; × Partner Share% &nbsp;=&nbsp; Share Due
+      </div>
+      <div style="background:#f8faff;border-radius:10px;padding:14px;margin-bottom:12px;display:flex;gap:0;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;padding:10px 16px;border-right:1px dashed var(--border);">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Total Expenses</div>
+          <div style="font-size:17px;font-weight:800;color:var(--red);">Rs. ${fmt(totalExp)}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px;">Opening: ${fmt(openingTotal)} + New: ${fmt(expTotal)}</div>
+        </div>
+        <div style="flex:1;min-width:160px;padding:10px 16px;border-right:1px dashed var(--border);">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">(−) Flat Collection</div>
+          <div style="font-size:17px;font-weight:800;color:var(--green);">Rs. ${fmt(totalColl)}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px;">${D.flats.length} flats ka total</div>
+        </div>
+        <div style="flex:1;min-width:160px;padding:10px 16px;border-right:1px dashed var(--border);background:rgba(184,148,63,.06);border-radius:8px;">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">= Net Balance</div>
+          <div style="font-size:17px;font-weight:800;color:var(--gold);">Rs. ${fmt(remaining)}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px;">Partners mein taqseem hoga</div>
+        </div>
+        <div style="flex:2;min-width:200px;padding:10px 16px;">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Partner-wise Share Due</div>
+          ${D.partnerDefs.map(p=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px dashed var(--border);font-size:12.5px;">
+              <span><b>${p.name}</b> <span style="color:var(--text2);">(${p.share}%)</span></span>
+              <span style="font-weight:800;color:#8e44ad;">Rs. ${fmt(remaining*(p.share/100))}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table style="font-size:12px;">
+          <thead><tr>
+            <th>Partner</th><th>Share %</th><th>Total Expenses</th><th>− Flat Collection</th><th>= Net Balance</th><th>× Share% = Due Amount</th>
+          </tr></thead>
+          <tbody>${partnerCalcRows}</tbody>
+        </table>
+      </div>`;
+  }
+
   document.getElementById('partner-cards').innerHTML=D.partnerDefs.map(p=>{
     const due=remaining*(p.share/100);
     const openPaid=D.partnerOpening[p.id]||0;
@@ -1669,7 +1730,10 @@ function renderFlats(){
       <td class="amount">Rs. ${fmt(f.saleValue)}</td>
       <td class="text-green amount">Rs. ${fmt(coll)}</td>
       <td class="${rem>0?'text-red':'text-green'} amount">Rs. ${fmt(rem)}</td>
-      <td class="no-print"><button class="btn btn-red btn-xs" onclick="deleteFlat('${f.id}')">Del</button></td>
+      <td class="no-print">
+        <button class="btn btn-gold btn-xs" onclick="editFlat('${f.id}')">✏️ Edit</button>
+        <button class="btn btn-red btn-xs" onclick="deleteFlat('${f.id}')">Del</button>
+      </td>
     </tr>`;
   }).join(''):'<tr><td colspan="9" class="empty">No flats found</td></tr>';
   const totRem=totSale-totColl;
@@ -1683,6 +1747,117 @@ function renderFlats(){
 }
 
 function deleteFlat(id){if(!confirm('Delete?'))return;D.flats=D.flats.filter(x=>x.id!==id);saveDB();renderFlats();}
+
+function editFlat(id){
+  const f=D.flats.find(x=>x.id===id);
+  if(!f) return;
+  const coll=f.payments.reduce((s,p)=>s+Number(p.amount||0),0);
+  const win=window.open('','_blank','width=500,height:600');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Edit Flat — ${f.name}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Outfit',sans-serif;background:#f0f4fb;padding:24px;}
+    h2{color:#0f1f3d;font-size:18px;font-weight:800;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #b8943f;}
+    .field{margin-bottom:14px;}
+    label{display:block;font-size:12px;font-weight:700;color:#5a6a80;text-transform:uppercase;margin-bottom:5px;}
+    input,select{width:100%;padding:10px 14px;border:2px solid #dde6f0;border-radius:10px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;}
+    input:focus,select:focus{border-color:#b8943f;}
+    .info{background:#fff;border-radius:10px;padding:12px;margin-bottom:16px;border-left:4px solid #b8943f;}
+    .info p{font-size:13px;color:#5a6a80;margin-bottom:4px;}
+    .info b{color:#0f1f3d;}
+    .btn{width:100%;padding:13px;background:linear-gradient(135deg,#0f1f3d,#1a2f55);color:#b8943f;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;margin-top:8px;}
+    .btn:hover{opacity:.9;}
+    .btn-red{background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;margin-top:6px;}
+    .payments{background:#fff;border-radius:10px;padding:14px;margin-bottom:16px;}
+    .payments h3{font-size:13px;font-weight:700;color:#5a6a80;text-transform:uppercase;margin-bottom:10px;}
+    .pay-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed #dde6f0;font-size:13px;}
+    .pay-row:last-child{border:none;}
+    .pay-del{background:#c0392b;color:#fff;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;}
+  </style></head><body>
+  <h2>✏️ Edit Flat — ${f.name}</h2>
+  <div class="info">
+    <p>Flat: <b>${f.flatno} (${f.floor})</b> | Type: <b>${f.type}</b></p>
+    <p>Total Collected: <b>Rs. ${coll.toLocaleString()}</b></p>
+  </div>
+  <div class="field"><label>Client Name</label><input id="e-name" value="${f.name}"></div>
+  <div class="field"><label>Flat No</label><input id="e-flatno" value="${f.flatno}"></div>
+  <div class="field"><label>Floor</label>
+    <select id="e-floor">
+      ${['Ground Floor','1ST','2ND','3RD','4TH','5TH','6TH','7TH','8TH','9TH','10TH'].map(fl=>`<option ${f.floor===fl?'selected':''}>${fl}</option>`).join('')}
+    </select>
+  </div>
+  <div class="field"><label>Type</label>
+    <select id="e-type">
+      ${['A','B','B-1','C','C-1'].map(t=>`<option ${f.type===t?'selected':''}>${t}</option>`).join('')}
+    </select>
+  </div>
+  <div class="field"><label>Sale Value (Rs.)</label><input id="e-saleValue" type="number" value="${f.saleValue}"></div>
+  
+  <div class="payments">
+    <h3>💰 Payment History</h3>
+    <div id="pay-list">
+      ${f.payments.map((p,pi)=>`
+        <div class="pay-row" id="pay-${pi}">
+          <span>${p.date} — Rs. ${Number(p.amount).toLocaleString()} (${p.mode})</span>
+          <button class="pay-del" onclick="delPay(${pi})">Del</button>
+        </div>`).join('')}
+    </div>
+    <div style="margin-top:10px;border-top:1px solid #dde6f0;padding-top:10px;">
+      <div class="field"><label>Add New Payment</label><input id="new-pay-amt" type="number" placeholder="Amount"></div>
+      <div class="field"><label>Date</label><input id="new-pay-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+      <div class="field"><label>Mode</label>
+        <select id="new-pay-mode"><option>Cash</option><option>Online</option><option>Cheque</option></select>
+      </div>
+      <div class="field"><label>Remarks</label><input id="new-pay-rem" placeholder="Optional"></div>
+    </div>
+  </div>
+  
+  <button class="btn" onclick="saveEdit()">💾 Save Changes</button>
+  
+  <script>
+    let payments=${JSON.stringify(f.payments)};
+    function delPay(i){
+      if(!confirm('Delete this payment?')) return;
+      payments.splice(i,1);
+      document.getElementById('pay-list').innerHTML=payments.map((p,pi)=>
+        '<div class="pay-row" id="pay-'+pi+'"><span>'+p.date+' — Rs. '+Number(p.amount).toLocaleString()+' ('+p.mode+')</span><button class="pay-del" onclick="delPay('+pi+')">Del</button></div>'
+      ).join('');
+    }
+    function saveEdit(){
+      const newAmt=Number(document.getElementById('new-pay-amt').value);
+      if(newAmt>0){
+        payments.push({
+          amount:newAmt,
+          date:document.getElementById('new-pay-date').value,
+          mode:document.getElementById('new-pay-mode').value,
+          remarks:document.getElementById('new-pay-rem').value
+        });
+      }
+      const updated={
+        id:'${f.id}',
+        name:document.getElementById('e-name').value,
+        flatno:document.getElementById('e-flatno').value,
+        floor:document.getElementById('e-floor').value,
+        type:document.getElementById('e-type').value,
+        saleValue:Number(document.getElementById('e-saleValue').value),
+        payments:payments,
+        createdAt:'${f.createdAt}'
+      };
+      window.opener.updateFlat(updated);
+      alert('✅ Saved!');
+      window.close();
+    }
+  <\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+function updateFlat(updated){
+  const idx=D.flats.findIndex(x=>x.id===updated.id);
+  if(idx>-1){ D.flats[idx]=updated; saveDB(); renderFlats(); }
+}
 
 // ===== CONTRACTORS =====
 function saveContractor(){
@@ -1914,7 +2089,76 @@ function printSection(section){
 
   let body='';
 
-  if(section==='opening'){
+  if(section==='dashboard'){
+    const openingTotal=totalOpening();
+    const expensesTotal=D.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+    const totalExp=openingTotal+expensesTotal;
+    const totalColl=D.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+    const netBal=totalExp-totalColl;
+    const partnerPaid=D.partners.filter(p=>p.type==='payment').reduce((s,p)=>s+Number(p.amount||0),0);
+
+    const partnerRows=D.partnerDefs.map(p=>{
+      const due=netBal*(p.share/100);
+      const openPaid=D.partnerOpening[p.id]||0;
+      const newPaid=D.partners.filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+      const paid=openPaid+newPaid;
+      const rem=due-paid;
+      return`<tr>
+        <td><b>${p.name}</b></td>
+        <td>${p.share}%</td>
+        <td class="amount text-red">Rs. ${fmt(totalExp)}</td>
+        <td class="amount text-green">Rs. ${fmt(totalColl)}</td>
+        <td class="amount">Rs. ${fmt(netBal)}</td>
+        <td class="amount text-gold">Rs. ${fmt(due)}</td>
+        <td class="amount text-blue">Rs. ${fmt(openPaid)}</td>
+        <td class="amount text-green">Rs. ${fmt(newPaid)}</td>
+        <td class="amount text-green">Rs. ${fmt(paid)}</td>
+        <td class="amount ${rem>0?'text-red':'text-green'}">Rs. ${fmt(Math.abs(rem))}</td>
+        <td><span class="badge ${rem>0?'b-red':'b-green'}">${rem>0?'Pending':'Clear'}</span></td>
+      </tr>`;
+    }).join('');
+
+    const expByCat={};
+    D.expenses.forEach(e=>{expByCat[e.category]=(expByCat[e.category]||0)+Number(e.amount||0);});
+    Object.keys(CATS).forEach(k=>{if(D.opening[k]) expByCat[k]=(expByCat[k]||0)+(D.opening[k]||0);});
+    const expRows=Object.entries(expByCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${CATS[k]||k}</td><td class="amount text-gold">Rs. ${fmt(v)}</td></tr>`).join('');
+
+    const recent=[...D.monthly].sort((a,b)=>b.month.localeCompare(a.month));
+    const monthlyRows=recent.map(m=>{
+      const net=Number(m.recv||0)-Number(m.exp||0);
+      return`<tr><td><b>${m.month}</b></td><td class="text-red amount">Rs. ${fmt(m.exp)}</td><td class="text-green amount">Rs. ${fmt(m.recv)}</td><td class="${net>=0?'text-green':'text-red'} amount">Rs. ${fmt(Math.abs(net))}</td><td><span class="badge ${net>=0?'b-green':'b-red'}">${net>=0?'Surplus':'Deficit'}</span></td></tr>`;
+    }).join('');
+
+    body=printHeader('DASHBOARD SUMMARY REPORT')+
+    `<div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="stat-box" style="border-left-color:var(--red);"><div class="lbl">Total Project Expenses</div><div class="val text-red">Rs. ${fmt(totalExp)}</div></div>
+      <div class="stat-box" style="border-left-color:var(--green);"><div class="lbl">Flat Amount Received</div><div class="val text-green">Rs. ${fmt(totalColl)}</div></div>
+      <div class="stat-box" style="border-left-color:var(--gold);"><div class="lbl">Net Balance</div><div class="val text-gold">Rs. ${fmt(netBal)}</div></div>
+      <div class="stat-box" style="border-left-color:var(--blue);"><div class="lbl">Opening Balance</div><div class="val text-blue">Rs. ${fmt(openingTotal)}</div></div>
+      <div class="stat-box"><div class="lbl">Total Flats</div><div class="val">${D.flats.length}</div></div>
+      <div class="stat-box" style="border-left-color:#8e44ad;"><div class="lbl">Partner Payments</div><div class="val" style="color:#8e44ad;">Rs. ${fmt(partnerPaid)}</div></div>
+    </div>
+
+    <div class="section-title">👥 Partner Share Status — Detailed Calculation</div>
+    <div class="recon-block">
+      <div class="recon-title">Formula</div>
+      <div class="recon-row"><span>Total Project Expenses (Opening + All Expenses)</span><span class="amount text-red">Rs. ${fmt(totalExp)}</span></div>
+      <div class="recon-row"><span>(−) Total Flat Amount Received</span><span class="amount text-green">Rs. ${fmt(totalColl)}</span></div>
+      <div class="recon-total"><span>= Net Balance (to be shared by partners as per %)</span><span>Rs. ${fmt(netBal)}</span></div>
+    </div>
+    <table>
+      <thead><tr><th>Partner</th><th>Share%</th><th>Total Expenses</th><th>− Flat Collection</th><th>= Net Balance</th><th>× Share% = Due</th><th>Opening Paid</th><th>New Payments</th><th>Total Paid</th><th>Remaining</th><th>Status</th></tr></thead>
+      <tbody>${partnerRows}</tbody>
+    </table>
+
+    <div class="section-title">💸 Expense by Category</div>
+    <table><thead><tr><th>Category</th><th>Amount</th></tr></thead><tbody>${expRows||'<tr><td colspan="2" style="text-align:center;padding:14px;color:#999;">No expenses</td></tr>'}</tbody></table>
+
+    <div class="section-title">📅 Monthly Closings</div>
+    <table><thead><tr><th>Month</th><th>Expenses</th><th>Flat Collection</th><th>Net</th><th>Status</th></tr></thead>
+    <tbody>${monthlyRows||'<tr><td colspan="5" style="text-align:center;padding:14px;color:#999;">No records</td></tr>'}</tbody></table>`;
+
+  } else if(section==='opening'){
     let total=0;
     const rows=Object.entries(CATS).map(([k,v])=>{
       const amt=D.opening[k]||0; total+=amt;
@@ -2022,6 +2266,10 @@ function printSection(section){
         <div class="prow"><span>Remaining</span><span class="amount ${rem>0?'text-red':'text-green'}">Rs. ${fmt(Math.abs(rem))}</span></div>
       </div>`;
     }).join('');
+    const partnerCalcRows=D.partnerDefs.map(p=>{
+      const due=remaining*(p.share/100);
+      return`<tr><td><b>${p.name}</b></td><td>${p.share}%</td><td class="amount text-red">Rs. ${fmt(totalExpAmt)}</td><td class="amount text-green">Rs. ${fmt(totalColl)}</td><td class="amount">Rs. ${fmt(remaining)}</td><td class="amount text-gold">Rs. ${fmt(due)}</td></tr>`;
+    }).join('');
     let bal=0;
     const rows=sorted.map((p,i)=>{
       bal+=p.type==='payment'?Number(p.amount):-Number(p.amount);
@@ -2030,6 +2278,11 @@ function printSection(section){
     body=printHeader('PARTNER LEDGER REPORT')+
     `<div class="section-title">👥 Partner Share Summary</div>
     <div class="partner-summary">${pCards}</div>
+
+    <div class="section-title">🧮 Partner Share — Detailed Calculation (Total Expenses − Flat Collection = Net Balance → × Share% = Due)</div>
+    <table><thead><tr><th>Partner</th><th>Share%</th><th>Total Expenses</th><th>− Flat Collection</th><th>= Net Balance</th><th>× Share% = Due</th></tr></thead>
+    <tbody>${partnerCalcRows}</tbody></table>
+
     <div class="section-title">📒 Partner Ledger Entries</div>
     <table><thead><tr><th>#</th><th>Date</th><th>Partner</th><th>Description</th><th>Mode</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No entries</td></tr>'}</tbody></table>`;
@@ -2072,3 +2325,7 @@ function printSection(section){
 </script>
 </body>
 </html>
+
+
+
+
