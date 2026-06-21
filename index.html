@@ -790,6 +790,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <div class="card">
     <div class="card-header">
       <h3>🗂️ Month History — Sab Mahine</h3>
+      <button class="btn btn-blue btn-sm no-print" onclick="recoverArchive()">🔄 Recover Data</button>
     </div>
     <div class="card-body">
       <div id="history-list"></div>
@@ -1013,6 +1014,10 @@ function showSync(msg,color){
 async function saveDB(){
   try{
     localStorage.setItem('mnr3_data',JSON.stringify(D));
+    // Also save monthArchive separately in localStorage as backup
+    if(D.monthArchive&&D.monthArchive.length>0){
+      localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive));
+    }
   }catch(le){
     console.error('LocalStorage save failed:',le);
   }
@@ -1032,6 +1037,13 @@ async function loadAll(){
     const d=await r.json();
     if(d&&d.flats&&d.flats.length>0){
       D=mergeDefaults(d);
+      // Agar Firebase mein monthArchive nahi hai to localStorage backup se lo
+      if(!D.monthArchive||D.monthArchive.length===0){
+        const archiveBackup=localStorage.getItem('mnr3_archive');
+        if(archiveBackup){
+          try{D.monthArchive=JSON.parse(archiveBackup);}catch(x){}
+        }
+      }
       localStorage.setItem('mnr3_data',JSON.stringify(D));
       showSync('☁️ Cloud data loaded!','#1a7a3a');
       renderAll();
@@ -1111,7 +1123,7 @@ function showPage(p){
     partners:()=>{renderPartnerCards();renderPartnerLedger();buildPartnerDropdowns();},
     recon:renderReconciliation,
     contractors:renderContractors,
-    history:()=>{renderHistory();}
+    history:()=>{setTimeout(renderHistory,50);}
   };
   if(renders[p]) renders[p]();
 }
@@ -1260,24 +1272,92 @@ function executeMonthClose(){
   saveDB();
   document.getElementById('close-month-modal').style.display='none';
   renderAll();
-  renderHistory();
-  alert('✅ '+archive.month+' close ho gaya! \n➡️ '+nextMonth+' shuru ho gaya!');
+  alert('✅ '+archive.month+' close ho gaya! \n➡️ '+nextMonth+' shuru ho gaya!\n\nHistory tab mein dekh sakte hain.');
+  showPage('history');
+}
+
+function recoverArchive(){
+  // Check localStorage backup first
+  const backup=localStorage.getItem('mnr3_archive');
+  if(backup){
+    try{
+      const arr=JSON.parse(backup);
+      if(arr&&arr.length>0){
+        D.monthArchive=arr;
+        saveDB();
+        renderHistory();
+        alert('✅ Archive recover ho gaya! '+arr.length+' months mile.');
+        return;
+      }
+    }catch(x){}
+  }
+  // Try to get from Firebase directly
+  fetch(FB+'/mnr3_data.json')
+    .then(r=>r.json())
+    .then(d=>{
+      console.log('Firebase raw data:', JSON.stringify(d).substring(0,500));
+      if(d&&d.monthArchive&&d.monthArchive.length>0){
+        D.monthArchive=d.monthArchive;
+        localStorage.setItem('mnr3_archive',JSON.stringify(d.monthArchive));
+        saveDB();
+        renderHistory();
+        alert('✅ Firebase se '+d.monthArchive.length+' months recover ho gaye!');
+      } else {
+        alert('⚠️ Koi archive nahi mila.\n\nFirebase mein monthArchive field nahi hai.\nAb se close karne par sahi save hoga.');
+      }
+    })
+    .catch(()=>alert('❌ Firebase connect nahi ho saka.'));
+}
+
+function recoverArchive(){
+  const backup=localStorage.getItem('mnr3_archive');
+  if(backup){
+    try{
+      const arr=JSON.parse(backup);
+      if(arr&&arr.length>0){
+        D.monthArchive=arr;
+        saveDB();
+        renderHistory();
+        alert('✅ Archive recover ho gaya! '+arr.length+' months mile.');
+        return;
+      }
+    }catch(x){}
+  }
+  fetch(FB+'/mnr3_data.json')
+    .then(r=>r.json())
+    .then(d=>{
+      if(d&&d.monthArchive&&d.monthArchive.length>0){
+        D.monthArchive=d.monthArchive;
+        localStorage.setItem('mnr3_archive',JSON.stringify(d.monthArchive));
+        saveDB();
+        renderHistory();
+        alert('✅ Firebase se '+d.monthArchive.length+' months recover ho gaye!');
+      } else {
+        alert('⚠️ Koi purana archive nahi mila.\nAb se close karne par sahi save hoga.');
+      }
+    })
+    .catch(()=>alert('❌ Firebase connect nahi ho saka.'));
 }
 
 function renderHistory(){
   const list=document.getElementById('history-list');
   if(!list) return;
   const archives=D.monthArchive||[];
+  console.log('renderHistory called, archives:', archives.length, JSON.stringify(archives.map(a=>a.month)));
   if(!archives.length){
-    list.innerHTML='<div class="empty">Koi closed month nahi hai abhi.</div>';
+    list.innerHTML='<div class="empty" style="text-align:center;padding:40px;">'+
+      '<div style="font-size:40px;margin-bottom:12px;">📭</div>'+
+      '<div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:6px;">Koi closed month nahi hai</div>'+
+      '<div style="font-size:12px;color:var(--text2);">Close Month button se month close karein</div>'+
+      '</div>';
     return;
   }
   list.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">'+
     [...archives].sort((a,b)=>b.month.localeCompare(a.month)).map(a=>{
-      const expTotal=a.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
-      const openTotal=Object.keys(CATS).reduce((s,k)=>s+Number(a.opening[k]||0),0);
+      const expTotal=(a.expenses||[]).reduce((s,e)=>s+Number(e.amount||0),0);
+      const openTotal=Object.keys(CATS).reduce((s,k)=>s+Number((a.opening||{})[k]||0),0);
       const totalExp=openTotal+expTotal;
-      const totalColl=a.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+      const totalColl=(a.flats||[]).reduce((s,f)=>s+(f.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
       const net=totalExp-totalColl;
       return '<div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.08);border-top:4px solid var(--gold);">'+
         '<div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:4px;">📅 '+a.month+'</div>'+
@@ -1384,10 +1464,10 @@ function viewMonthDetail(month){
   const a=D.monthArchive.find(x=>x.month===month);
   if(!a) return;
   const detail=document.getElementById('history-detail');
-  const expTotal=a.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
-  const openTotal=Object.keys(CATS).reduce((s,k)=>s+Number(a.opening[k]||0),0);
+  const expTotal=(a.expenses||[]).reduce((s,e)=>s+Number(e.amount||0),0);
+  const openTotal=Object.keys(CATS).reduce((s,k)=>s+Number((a.opening||{})[k]||0),0);
   const totalExp=openTotal+expTotal;
-  const totalColl=a.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+  const totalColl=(a.flats||[]).reduce((s,f)=>s+(f.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
   const net=totalExp-totalColl;
 
   const expRows=a.expenses.map((e,i)=>'<tr><td>'+(i+1)+'</td><td>'+e.date+'</td><td>'+(CATS[e.category]||e.category)+'</td><td>'+e.vendor+'</td><td class="amount text-red">Rs. '+fmt(e.amount)+'</td><td>'+e.vno+'</td></tr>').join('');
@@ -1438,10 +1518,10 @@ function printMonthArchive(month){
   const a=D.monthArchive.find(x=>x.month===month);
   if(!a){alert('Data nahi mila!');return;}
   const co=D.settings.company||'Malka Noor Residency';
-  const expTotal=a.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
-  const openTotal=Object.keys(CATS).reduce((s,k)=>s+Number(a.opening[k]||0),0);
+  const expTotal=(a.expenses||[]).reduce((s,e)=>s+Number(e.amount||0),0);
+  const openTotal=Object.keys(CATS).reduce((s,k)=>s+Number((a.opening||{})[k]||0),0);
   const totalExp=openTotal+expTotal;
-  const totalColl=a.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+  const totalColl=(a.flats||[]).reduce((s,f)=>s+(f.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
   const net=totalExp-totalColl;
 
   const expRows=a.expenses.map((e,i)=>'<tr><td>'+(i+1)+'</td><td>'+e.date+'</td><td>'+(CATS[e.category]||e.category)+'</td><td>'+e.vendor+'</td><td style="font-weight:700;color:#c0392b;">Rs. '+fmt(e.amount)+'</td><td>'+e.vno+'</td><td>'+e.mode+'</td><td>'+e.remarks+'</td></tr>').join('');
