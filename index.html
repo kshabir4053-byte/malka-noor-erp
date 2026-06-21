@@ -790,7 +790,6 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <div class="card">
     <div class="card-header">
       <h3>🗂️ Month History — Sab Mahine</h3>
-      <button class="btn btn-blue btn-sm no-print" onclick="recoverArchive()">🔄 Recover Data</button>
     </div>
     <div class="card-body">
       <div id="history-list"></div>
@@ -1014,10 +1013,6 @@ function showSync(msg,color){
 async function saveDB(){
   try{
     localStorage.setItem('mnr3_data',JSON.stringify(D));
-    // Also save monthArchive separately in localStorage as backup
-    if(D.monthArchive&&D.monthArchive.length>0){
-      localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive));
-    }
   }catch(le){
     console.error('LocalStorage save failed:',le);
   }
@@ -1037,13 +1032,6 @@ async function loadAll(){
     const d=await r.json();
     if(d&&d.flats&&d.flats.length>0){
       D=mergeDefaults(d);
-      // Agar Firebase mein monthArchive nahi hai to localStorage backup se lo
-      if(!D.monthArchive||D.monthArchive.length===0){
-        const archiveBackup=localStorage.getItem('mnr3_archive');
-        if(archiveBackup){
-          try{D.monthArchive=JSON.parse(archiveBackup);}catch(x){}
-        }
-      }
       localStorage.setItem('mnr3_data',JSON.stringify(D));
       showSync('☁️ Cloud data loaded!','#1a7a3a');
       renderAll();
@@ -1123,7 +1111,7 @@ function showPage(p){
     partners:()=>{renderPartnerCards();renderPartnerLedger();buildPartnerDropdowns();},
     recon:renderReconciliation,
     contractors:renderContractors,
-    history:()=>{setTimeout(renderHistory,50);}
+    history:()=>{renderHistory();}
   };
   if(renders[p]) renders[p]();
 }
@@ -1272,84 +1260,16 @@ function executeMonthClose(){
   saveDB();
   document.getElementById('close-month-modal').style.display='none';
   renderAll();
-  alert('✅ '+archive.month+' close ho gaya! \n➡️ '+nextMonth+' shuru ho gaya!\n\nHistory tab mein dekh sakte hain.');
-  showPage('history');
-}
-
-function recoverArchive(){
-  // Check localStorage backup first
-  const backup=localStorage.getItem('mnr3_archive');
-  if(backup){
-    try{
-      const arr=JSON.parse(backup);
-      if(arr&&arr.length>0){
-        D.monthArchive=arr;
-        saveDB();
-        renderHistory();
-        alert('✅ Archive recover ho gaya! '+arr.length+' months mile.');
-        return;
-      }
-    }catch(x){}
-  }
-  // Try to get from Firebase directly
-  fetch(FB+'/mnr3_data.json')
-    .then(r=>r.json())
-    .then(d=>{
-      console.log('Firebase raw data:', JSON.stringify(d).substring(0,500));
-      if(d&&d.monthArchive&&d.monthArchive.length>0){
-        D.monthArchive=d.monthArchive;
-        localStorage.setItem('mnr3_archive',JSON.stringify(d.monthArchive));
-        saveDB();
-        renderHistory();
-        alert('✅ Firebase se '+d.monthArchive.length+' months recover ho gaye!');
-      } else {
-        alert('⚠️ Koi archive nahi mila.\n\nFirebase mein monthArchive field nahi hai.\nAb se close karne par sahi save hoga.');
-      }
-    })
-    .catch(()=>alert('❌ Firebase connect nahi ho saka.'));
-}
-
-function recoverArchive(){
-  const backup=localStorage.getItem('mnr3_archive');
-  if(backup){
-    try{
-      const arr=JSON.parse(backup);
-      if(arr&&arr.length>0){
-        D.monthArchive=arr;
-        saveDB();
-        renderHistory();
-        alert('✅ Archive recover ho gaya! '+arr.length+' months mile.');
-        return;
-      }
-    }catch(x){}
-  }
-  fetch(FB+'/mnr3_data.json')
-    .then(r=>r.json())
-    .then(d=>{
-      if(d&&d.monthArchive&&d.monthArchive.length>0){
-        D.monthArchive=d.monthArchive;
-        localStorage.setItem('mnr3_archive',JSON.stringify(d.monthArchive));
-        saveDB();
-        renderHistory();
-        alert('✅ Firebase se '+d.monthArchive.length+' months recover ho gaye!');
-      } else {
-        alert('⚠️ Koi purana archive nahi mila.\nAb se close karne par sahi save hoga.');
-      }
-    })
-    .catch(()=>alert('❌ Firebase connect nahi ho saka.'));
+  renderHistory();
+  alert('✅ '+archive.month+' close ho gaya! \n➡️ '+nextMonth+' shuru ho gaya!');
 }
 
 function renderHistory(){
   const list=document.getElementById('history-list');
   if(!list) return;
   const archives=D.monthArchive||[];
-  console.log('renderHistory called, archives:', archives.length, JSON.stringify(archives.map(a=>a.month)));
   if(!archives.length){
-    list.innerHTML='<div class="empty" style="text-align:center;padding:40px;">'+
-      '<div style="font-size:40px;margin-bottom:12px;">📭</div>'+
-      '<div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:6px;">Koi closed month nahi hai</div>'+
-      '<div style="font-size:12px;color:var(--text2);">Close Month button se month close karein</div>'+
-      '</div>';
+    list.innerHTML='<div class="empty">Koi closed month nahi hai abhi.</div>';
     return;
   }
   list.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">'+
