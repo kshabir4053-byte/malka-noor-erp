@@ -250,6 +250,9 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
       <div style="font-weight:800;">Sohail Ahmed</div>
       <div>CEO &nbsp;|&nbsp; 0321-2447324</div>
     </div>
+    <div id="active-month-badge" style="background:rgba(184,148,63,.2);border:1px solid var(--gold);border-radius:8px;padding:4px 12px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;" onclick="showPage('history')">📅 <span id="active-month-label">Loading...</span></div>
+    <button class="btn btn-sm no-print" id="lock-btn" onclick="toggleMonthLock()" style="background:#e67e22;color:#fff;font-size:11px;">🔒 Lock</button>
+    <button class="btn btn-green btn-sm no-print" onclick="closeMonthConfirm()" style="font-size:11px;">✅ Close Month</button>
     <button class="btn btn-gold btn-sm" onclick="openSettingsModal()">⚙️ Settings</button>
     <button class="btn btn-navy btn-sm" onclick="syncNow()">🔄 Sync</button>
   </div>
@@ -265,6 +268,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <div class="nav-tab" onclick="showPage('partners')">👥 Partners</div>
   <div class="nav-tab" onclick="showPage('recon')">📋 Reconciliation</div>
   <div class="nav-tab" onclick="showPage('contractors')">🏗️ Contractors</div>
+  <div class="nav-tab" onclick="showPage('history')">🗂️ Month History</div>
 </div>
 
 <div class="main">
@@ -430,8 +434,13 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
           <input type="text" id="exp-remarks" placeholder="Optional">
         </div>
       </div>
+      <input type="hidden" id="exp-edit-id" value="">
+      <div id="exp-edit-banner" style="display:none;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border-radius:10px;padding:10px 16px;margin-top:14px;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;">
+        <span>✏️ Edit Mode — Entry update ho rahi hai</span>
+        <button class="btn btn-sm" onclick="cancelEditExpense()" style="background:rgba(255,255,255,.2);color:#fff;font-size:12px;">✕ Cancel Edit</button>
+      </div>
       <div class="btn-row no-print">
-        <button class="btn btn-gold" onclick="saveExpense()">💾 Save Expense</button>
+        <button class="btn btn-gold" id="exp-save-btn" onclick="saveExpense()">💾 Save Expense</button>
         <button class="btn btn-navy" onclick="clearExpense()">🗑 Clear</button>
         <button class="btn btn-blue" onclick="previewVoucher()">🖨️ Preview Voucher</button>
       </div>
@@ -776,6 +785,19 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   </div>
 </div>
 
+<!-- ==================== MONTH HISTORY ==================== -->
+<div class="page" id="pg-history">
+  <div class="card">
+    <div class="card-header">
+      <h3>🗂️ Month History — Sab Mahine</h3>
+    </div>
+    <div class="card-body">
+      <div id="history-list"></div>
+    </div>
+  </div>
+  <div id="history-detail"></div>
+</div>
+
 </div><!-- end main -->
 
 <div id="sync-status"></div>
@@ -787,6 +809,31 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <div class="wa-toast-actions">
     <a class="wa-btn wa-btn-send" id="wa-send-btn" href="#" target="_blank">📤 WhatsApp Send</a>
     <button class="wa-btn wa-btn-close" onclick="closeWaToast()">✕ Close</button>
+  </div>
+</div>
+
+<!-- ==================== CLOSE MONTH MODAL ==================== -->
+<div id="close-month-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>✅ Month Close Karein</h3>
+      <button class="modal-close" onclick="document.getElementById('close-month-modal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box" style="margin-bottom:16px;">
+        Is month ka sara data save ho jaye ga. Next month fresh start hoga.<br>
+        Expenses lock ho jayengi. Flats carry forward honge. Partner balances update honge.
+      </div>
+      <div id="close-month-summary" style="margin-bottom:16px;"></div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Next Month</label>
+        <input type="month" id="next-month-input" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;width:100%;">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green" onclick="executeMonthClose()">✅ Confirm — Month Close Karo</button>
+        <button class="btn btn-navy" onclick="document.getElementById('close-month-modal').style.display='none'">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -923,6 +970,12 @@ const CATS = {
 };
 
 const FB = 'https://malka-noor-erp-default-rtdb.firebaseio.com';
+
+// ===== MONTHLY SYSTEM =====
+// D.activeMonth = '2026-05' (current active month)
+// D.monthLocked = false/true
+// D.monthArchive = [ {month, locked, expenses, flatPayments, partnerPayments, opening, partnerOpening, flats, reconciliation} ]
+
 let lastVoucherData = null;
 
 // ===== LOGIN =====
@@ -1006,14 +1059,19 @@ async function loadAll(){
 }
 
 function mergeDefaults(d){
+  const now=new Date();
+  const curMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   const def={
     settings:D.settings,
     partnerDefs:[{id:'sohail',name:'Sohail Ahmed',share:60},{id:'ummah',name:'Ummah Welfare Trust',share:30},{id:'razzaq',name:'Haji Abdul Razzaq',share:10}],
     partnerOpening:{},
     opening:{},
-    expenses:[],flats:[],monthly:[],contractors:[],partners:[],voucherSeq:1
+    expenses:[],flats:[],monthly:[],contractors:[],partners:[],voucherSeq:1,
+    activeMonth:curMonth,
+    monthLocked:false,
+    monthArchive:[]
   };
-  return {...def,...d,settings:{...def.settings,...(d.settings||{})},opening:{...def.opening,...(d.opening||{})},partnerOpening:{...def.partnerOpening,...(d.partnerOpening||{})},partnerDefs:d.partnerDefs||def.partnerDefs};
+  return {...def,...d,settings:{...def.settings,...(d.settings||{})},opening:{...def.opening,...(d.opening||{})},partnerOpening:{...def.partnerOpening,...(d.partnerOpening||{})},partnerDefs:d.partnerDefs||def.partnerDefs,monthArchive:d.monthArchive||[]};
 }
 
 function syncNow(){ showSync('🔄 Syncing...','#1a2f55'); loadAll(); }
@@ -1041,7 +1099,7 @@ function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
   document.getElementById('pg-'+p).classList.add('active');
-  const tabs=['dashboard','opening','expenses','flats','monthly','partners','recon','contractors'];
+  const tabs=['dashboard','opening','expenses','flats','monthly','partners','recon','contractors','history'];
   const idx=tabs.indexOf(p);
   if(idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   const renders={
@@ -1052,12 +1110,14 @@ function showPage(p){
     monthly:renderMonthly,
     partners:()=>{renderPartnerCards();renderPartnerLedger();buildPartnerDropdowns();},
     recon:renderReconciliation,
-    contractors:renderContractors
+    contractors:renderContractors,
+    history:()=>{renderHistory();}
   };
   if(renders[p]) renders[p]();
 }
 
 function renderAll(){
+  updateMonthBadge();
   renderDashboard();
   renderOpeningBalance();
   renderExpStats();
@@ -1065,6 +1125,402 @@ function renderAll(){
   renderPartnerCards();
   buildPartnerDropdowns();
   renderReconciliation();
+}
+
+function updateMonthBadge(){
+  const m=D.activeMonth||'—';
+  const lbl=document.getElementById('active-month-label');
+  const lockBtn=document.getElementById('lock-btn');
+  if(lbl) lbl.textContent=m+(D.monthLocked?' 🔒':' 🔓');
+  if(lockBtn){
+    if(D.monthLocked){lockBtn.textContent='🔓 Unlock';lockBtn.style.background='#27ae60';}
+    else{lockBtn.textContent='🔒 Lock';lockBtn.style.background='#e67e22';}
+  }
+}
+
+function toggleMonthLock(){
+  if(D.monthLocked){
+    if(!confirm('Month UNLOCK karein? Phir se entries edit ho sakti hain.')) return;
+    D.monthLocked=false;
+  } else {
+    if(!confirm('Month LOCK karein? Expenses edit/delete nahi hongi.')) return;
+    D.monthLocked=true;
+  }
+  saveDB();
+  updateMonthBadge();
+  renderExpenses();
+}
+
+function closeMonthConfirm(){
+  // Check if already closed
+  const alreadyClosed=(D.monthArchive||[]).find(a=>a.month===D.activeMonth);
+  if(alreadyClosed){
+    if(!confirm('⚠️ '+D.activeMonth+' pehle se close ho chuka hai!\nKya dobara close karna chahte hain? (Purana record replace ho jaye ga)')) return;
+  }
+  const summary=document.getElementById('close-month-summary');
+  const openingTotal=totalOpening();
+  const expTotal=D.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const totalExp=openingTotal+expTotal;
+  const totalColl=D.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+  const netBal=totalExp-totalColl;
+
+  // Category totals for next opening
+  const catTotals={};
+  Object.keys(CATS).forEach(k=>{
+    catTotals[k]=(D.opening[k]||0)+D.expenses.filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+  });
+
+  // Partner summary
+  const pRows=D.partnerDefs.map(p=>{
+    const due=netBal*(p.share/100);
+    const openPaid=D.partnerOpening[p.id]||0;
+    const newPaid=D.partners.filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+    const paid=openPaid+newPaid;
+    return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed #dde6f0;"><span><b>'+p.name+'</b> ('+p.share+'%)</span><span>Due: Rs. '+fmt(due)+' | Paid: Rs. '+fmt(paid)+'</span></div>';
+  }).join('');
+
+  summary.innerHTML='<div style="background:#f8faff;border-radius:10px;padding:14px;font-size:13px;">'+
+    '<div style="font-weight:700;color:var(--dark);margin-bottom:8px;">'+D.activeMonth+' Summary:</div>'+
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Total Expenses</span><span class="text-red">Rs. '+fmt(totalExp)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Flat Collection</span><span class="text-green">Rs. '+fmt(totalColl)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:2px solid var(--dark);font-weight:800;"><span>Net Balance</span><span>Rs. '+fmt(netBal)+'</span></div>'+
+    '<div style="margin-top:10px;font-weight:700;margin-bottom:6px;">Partner Shares:</div>'+pRows+
+    '</div>';
+
+  // Next month auto calculate
+  const parts=D.activeMonth.split('-');
+  let y=parseInt(parts[0]),mo=parseInt(parts[1]);
+  mo++;if(mo>12){mo=1;y++;}
+  const nextM=y+'-'+String(mo).padStart(2,'0');
+  document.getElementById('next-month-input').value=nextM;
+
+  document.getElementById('close-month-modal').style.display='flex';
+}
+
+function executeMonthClose(){
+  const nextMonth=document.getElementById('next-month-input').value;
+  if(!nextMonth){alert('Next month select karein!');return;}
+  if(!confirm('Pakka? '+D.activeMonth+' close ho jaye ga aur '+nextMonth+' shuru hoga.')) return;
+
+  // Calculate category totals for carry forward
+  const catTotals={};
+  Object.keys(CATS).forEach(k=>{
+    catTotals[k]=(D.opening[k]||0)+D.expenses.filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+  });
+
+  // Partner totals for carry forward
+  const newPartnerOpening={};
+  D.partnerDefs.forEach(p=>{
+    const oldOpen=D.partnerOpening[p.id]||0;
+    const newPaid=D.partners.filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+    newPartnerOpening[p.id]=oldOpen+newPaid;
+  });
+
+  // Flat payment totals for carry forward (cumulative)
+  const flatCarry=D.flats.map(f=>({
+    ...f,
+    payments:[{
+      amount:f.payments.reduce((s,p)=>s+Number(p.amount||0),0),
+      date:D.activeMonth+'-01',
+      mode:'Carry Forward',
+      remarks:'Carry forward from '+D.activeMonth
+    }]
+  }));
+
+  // Archive current month
+  const archive={
+    month:D.activeMonth,
+    locked:true,
+    closedAt:new Date().toISOString(),
+    expenses:[...D.expenses],
+    partners:[...D.partners],
+    flats:JSON.parse(JSON.stringify(D.flats)),
+    opening:{...D.opening},
+    partnerOpening:{...D.partnerOpening},
+    contractors:[...D.contractors],
+    monthly:[...D.monthly]
+  };
+
+  if(!D.monthArchive) D.monthArchive=[];
+  // Replace if same month already archived
+  D.monthArchive=D.monthArchive.filter(a=>a.month!==D.activeMonth);
+  D.monthArchive.push(archive);
+
+  // Start fresh month
+  D.activeMonth=nextMonth;
+  D.monthLocked=false;
+  D.opening={...catTotals};
+  D.partnerOpening=newPartnerOpening;
+  D.flats=flatCarry;
+  D.expenses=[];
+  D.partners=[];
+  D.monthly=[];
+  D.contractors=[...D.contractors]; // contractors carry forward as is
+
+  saveDB();
+  document.getElementById('close-month-modal').style.display='none';
+  renderAll();
+  renderHistory();
+  alert('✅ '+archive.month+' close ho gaya! \n➡️ '+nextMonth+' shuru ho gaya!');
+}
+
+function renderHistory(){
+  const list=document.getElementById('history-list');
+  if(!list) return;
+  const archives=D.monthArchive||[];
+  if(!archives.length){
+    list.innerHTML='<div class="empty">Koi closed month nahi hai abhi.</div>';
+    return;
+  }
+  list.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">'+
+    [...archives].sort((a,b)=>b.month.localeCompare(a.month)).map(a=>{
+      const expTotal=a.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+      const openTotal=Object.keys(CATS).reduce((s,k)=>s+Number(a.opening[k]||0),0);
+      const totalExp=openTotal+expTotal;
+      const totalColl=a.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+      const net=totalExp-totalColl;
+      return '<div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.08);border-top:4px solid var(--gold);">'+
+        '<div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:4px;">📅 '+a.month+'</div>'+
+        '<div style="font-size:10px;color:var(--text2);margin-bottom:10px;">'+new Date(a.closedAt).toLocaleDateString('en-PK')+'</div>'+
+        '<div style="font-size:12px;display:flex;justify-content:space-between;padding:3px 0;"><span>Expenses</span><span class="text-red">Rs. '+fmt(expTotal)+'</span></div>'+
+        '<div style="font-size:12px;display:flex;justify-content:space-between;padding:3px 0;"><span>Collection</span><span class="text-green">Rs. '+fmt(totalColl)+'</span></div>'+
+        '<div style="font-size:12px;display:flex;justify-content:space-between;padding:3px 0;border-top:1px solid #dde6f0;font-weight:700;"><span>Net</span><span>Rs. '+fmt(net)+'</span></div>'+
+        '<div style="margin-top:10px;display:flex;gap:6px;">'+
+        '<button class="btn btn-navy btn-xs" onclick="viewMonthDetail(\'' + a.month + '\')">👁 View</button>'+
+        '<button class="btn btn-gold btn-xs" onclick="printMonthArchive(\'' + a.month + '\')">🖨️ Print</button>'+
+        '<button class="btn btn-green btn-xs" onclick="reopenMonth(\'' + a.month + '\')">🔓 Reopen</button>'+
+        '<button class="btn btn-red btn-xs" onclick="deleteMonthArchive(\'' + a.month + '\')">🗑 Del</button>'+
+        '</div></div>';
+    }).join('')+
+  '</div>';
+}
+
+function reopenMonth(month){
+  if(D.activeMonth && D.activeMonth !== month){
+    if(!confirm('⚠️ Abhi '+D.activeMonth+' active hai.\n'+month+' reopen karne se current month ka data ARCHIVE ho jaye ga.\nPakka?')) return;
+    // Archive current active month first
+    const curArchive={
+      month:D.activeMonth,
+      locked:false,
+      closedAt:new Date().toISOString(),
+      expenses:[...D.expenses],
+      partners:[...D.partners],
+      flats:JSON.parse(JSON.stringify(D.flats)),
+      opening:{...D.opening},
+      partnerOpening:{...D.partnerOpening},
+      contractors:[...D.contractors],
+      monthly:[...D.monthly]
+    };
+    D.monthArchive=(D.monthArchive||[]).filter(a=>a.month!==D.activeMonth);
+    D.monthArchive.push(curArchive);
+  }
+  // Restore selected month
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a){alert('Data nahi mila!');return;}
+  D.activeMonth=a.month;
+  D.monthLocked=false;
+  D.expenses=[...a.expenses];
+  D.partners=[...a.partners];
+  D.flats=JSON.parse(JSON.stringify(a.flats));
+  D.opening={...a.opening};
+  D.partnerOpening={...a.partnerOpening};
+  D.contractors=[...a.contractors];
+  D.monthly=[...(a.monthly||[])];
+  // Remove from archive (now active)
+  D.monthArchive=D.monthArchive.filter(x=>x.month!==month);
+  saveDB();
+  renderAll();
+  renderHistory();
+  showPage('dashboard');
+  alert('✅ '+month+' wapas active ho gaya!\nAb aap entries edit kar sakte hain.');
+}
+
+function reopenMonth(month){
+  if(D.activeMonth && D.activeMonth !== month){
+    if(!confirm('⚠️ Abhi '+D.activeMonth+' active hai.\n'+month+' reopen karne se current month ka data archive ho jaye ga. Pakka?')) return;
+    const curArchive={
+      month:D.activeMonth,locked:false,closedAt:new Date().toISOString(),
+      expenses:[...D.expenses],partners:[...D.partners],
+      flats:JSON.parse(JSON.stringify(D.flats)),
+      opening:{...D.opening},partnerOpening:{...D.partnerOpening},
+      contractors:[...D.contractors],monthly:[...D.monthly]
+    };
+    D.monthArchive=(D.monthArchive||[]).filter(a=>a.month!==D.activeMonth);
+    D.monthArchive.push(curArchive);
+  }
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a){alert('Data nahi mila!');return;}
+  D.activeMonth=a.month;D.monthLocked=false;
+  D.expenses=[...a.expenses];D.partners=[...a.partners];
+  D.flats=JSON.parse(JSON.stringify(a.flats));
+  D.opening={...a.opening};D.partnerOpening={...a.partnerOpening};
+  D.contractors=[...a.contractors];D.monthly=[...(a.monthly||[])];
+  D.monthArchive=D.monthArchive.filter(x=>x.month!==month);
+  saveDB();renderAll();renderHistory();showPage('dashboard');
+  alert('✅ '+month+' wapas active ho gaya!');
+}
+
+function deleteMonthArchive(month){
+  if(!confirm('⚠️ '+month+' ka record hamesha ke liye DELETE ho jaye ga! Pakka?')) return;
+  D.monthArchive=(D.monthArchive||[]).filter(a=>a.month!==month);
+  saveDB();
+  renderHistory();
+  const detail=document.getElementById('history-detail');
+  if(detail) detail.innerHTML='';
+  alert('✅ '+month+' ka record delete ho gaya!');
+}
+
+function deleteMonthArchive(month){
+  if(!confirm('⚠️ '+month+' ka record hamesha ke liye DELETE ho jaye ga! Pakka?')) return;
+  D.monthArchive=(D.monthArchive||[]).filter(a=>a.month!==month);
+  saveDB();
+  renderHistory();
+  const detail=document.getElementById('history-detail');
+  if(detail) detail.innerHTML='';
+  alert('✅ '+month+' ka record delete ho gaya!');
+}
+
+function viewMonthDetail(month){
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a) return;
+  const detail=document.getElementById('history-detail');
+  const expTotal=a.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const openTotal=Object.keys(CATS).reduce((s,k)=>s+Number(a.opening[k]||0),0);
+  const totalExp=openTotal+expTotal;
+  const totalColl=a.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+  const net=totalExp-totalColl;
+
+  const expRows=a.expenses.map((e,i)=>'<tr><td>'+(i+1)+'</td><td>'+e.date+'</td><td>'+(CATS[e.category]||e.category)+'</td><td>'+e.vendor+'</td><td class="amount text-red">Rs. '+fmt(e.amount)+'</td><td>'+e.vno+'</td></tr>').join('');
+  const flatRows=a.flats.map((f,i)=>{
+    const coll=f.payments.reduce((s,p)=>s+Number(p.amount||0),0);
+    return '<tr><td>'+(i+1)+'</td><td>'+f.name+'</td><td>'+f.flatno+'</td><td class="text-green amount">Rs. '+fmt(coll)+'</td><td class="'+(Number(f.saleValue)-coll>0?'text-red':'text-green')+' amount">Rs. '+fmt(Number(f.saleValue)-coll)+'</td></tr>';
+  }).join('');
+  const partnerRows=D.partnerDefs.map(p=>{
+    const due=net*(p.share/100);
+    const paid=(D.partnerOpening[p.id]||0)+(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+    return '<tr><td><b>'+p.name+'</b></td><td>'+p.share+'%</td><td class="amount text-gold">Rs. '+fmt(due)+'</td><td class="amount text-green">Rs. '+fmt(paid)+'</td><td class="amount '+(due-paid>0?'text-red':'text-green')+'">Rs. '+fmt(Math.abs(due-paid))+'</td></tr>';
+  }).join('');
+
+  detail.innerHTML='<div class="card" style="margin-top:16px;">'+
+    '<div class="card-header"><h3>📊 '+month+' — Tafseel</h3><button class="btn btn-gold btn-sm" onclick="printMonthArchive(\'' + month + '\')">🖨️ Print</button></div>'+
+    '<div class="card-body">'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">'+
+    '<div style="background:#fef0ee;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:10px;color:var(--red);font-weight:700;text-transform:uppercase;">Total Expenses</div><div style="font-size:18px;font-weight:800;color:var(--red);">Rs. '+fmt(totalExp)+'</div></div>'+
+    '<div style="background:#e6f8ee;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:10px;color:var(--green);font-weight:700;text-transform:uppercase;">Flat Collection</div><div style="font-size:18px;font-weight:800;color:var(--green);">Rs. '+fmt(totalColl)+'</div></div>'+
+    '<div style="background:#fff8e8;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:10px;color:var(--gold);font-weight:700;text-transform:uppercase;">Net Balance</div><div style="font-size:18px;font-weight:800;color:var(--gold);">Rs. '+fmt(net)+'</div></div>'+
+    '</div>'+
+    '<div style="font-size:14px;font-weight:800;color:var(--dark);margin:12px 0 8px;border-left:4px solid var(--gold);padding-left:10px;">💸 Expenses ('+a.expenses.length+')</div>'+
+    '<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Category</th><th>Vendor</th><th>Amount</th><th>Voucher</th></tr></thead><tbody>'+expRows+'</tbody></table></div>'+
+    '<div style="font-size:14px;font-weight:800;color:var(--dark);margin:12px 0 8px;border-left:4px solid var(--gold);padding-left:10px;">🏠 Flat Collections</div>'+
+    '<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Client</th><th>Flat</th><th>Is Month</th><th>Remaining</th></tr></thead><tbody>'+flatRows+'</tbody></table></div>'+
+    '<div style="font-size:14px;font-weight:800;color:var(--dark);margin:12px 0 8px;border-left:4px solid var(--gold);padding-left:10px;">👥 Partner Shares</div>'+
+    '<div class="tbl-wrap"><table><thead><tr><th>Partner</th><th>Share%</th><th>Due</th><th>Paid</th><th>Remaining</th></tr></thead><tbody>'+partnerRows+'</tbody></table></div>'+
+    '<div style="font-size:14px;font-weight:800;color:var(--dark);margin:12px 0 8px;border-left:4px solid var(--gold);padding-left:10px;">📋 Reconciliation Statement</div>'+
+    '<div style="background:#f8f9ff;border-radius:12px;padding:16px;">'+
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #dde6f0;font-size:13px;"><span>Opening Balance (Carry Forward)</span><span style="font-weight:700;color:#1565c0;">Rs. '+fmt(openTotal)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #dde6f0;font-size:13px;"><span>This Month Expenses</span><span style="font-weight:700;color:#c0392b;">Rs. '+fmt(expTotal)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #dde6f0;font-size:13px;font-weight:800;"><span>Total Project Cost</span><span style="color:#c0392b;">Rs. '+fmt(totalExp)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #dde6f0;font-size:13px;"><span>Flat Collection</span><span style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(totalColl)+'</span></div>'+
+    '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:800;border-top:2px solid #0f1f3d;margin-top:4px;"><span>Net Balance → Partners mein taqseem</span><span>Rs. '+fmt(net)+'</span></div>'+
+    '<div style="margin-top:12px;">'+
+    D.partnerDefs.map(p=>{
+      const due=net*(p.share/100);
+      const op=a.partnerOpening[p.id]||0;
+      const np=(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+      const paid=op+np;const rem=due-paid;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#fff;border-radius:8px;margin-bottom:6px;font-size:12.5px;"><span><b>'+p.name+'</b> ('+p.share+'%)</span><span>Due: <b>Rs. '+fmt(due)+'</b> | Paid: <b style="color:#1a7a3a;">Rs. '+fmt(paid)+'</b> | Rem: <b style="color:'+(rem>0?'#c0392b':'#1a7a3a')+';">Rs. '+fmt(Math.abs(rem))+'</b> <span style="font-size:10px;">'+(rem>0?'⚠':'✅')+'</span></span></div>';
+    }).join('')+
+    '</div></div>'+
+    '</div></div>';
+}
+
+function printMonthArchive(month){
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a){alert('Data nahi mila!');return;}
+  const co=D.settings.company||'Malka Noor Residency';
+  const expTotal=a.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const openTotal=Object.keys(CATS).reduce((s,k)=>s+Number(a.opening[k]||0),0);
+  const totalExp=openTotal+expTotal;
+  const totalColl=a.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+  const net=totalExp-totalColl;
+
+  const expRows=a.expenses.map((e,i)=>'<tr><td>'+(i+1)+'</td><td>'+e.date+'</td><td>'+(CATS[e.category]||e.category)+'</td><td>'+e.vendor+'</td><td style="font-weight:700;color:#c0392b;">Rs. '+fmt(e.amount)+'</td><td>'+e.vno+'</td><td>'+e.mode+'</td><td>'+e.remarks+'</td></tr>').join('');
+  const catRows=Object.entries(CATS).map(([k,v])=>{
+    const open=a.opening[k]||0;
+    const exp=a.expenses.filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+    if(!open&&!exp) return '';
+    return '<tr><td>'+v+'</td><td style="font-weight:700;color:#b8943f;">Rs. '+fmt(open)+'</td><td style="font-weight:700;color:#c0392b;">Rs. '+fmt(exp)+'</td><td style="font-weight:700;">Rs. '+fmt(open+exp)+'</td></tr>';
+  }).filter(Boolean).join('');
+  const flatRows=a.flats.map((f,i)=>{
+    const coll=f.payments.reduce((s,p)=>s+Number(p.amount||0),0);
+    const rem=Number(f.saleValue)-coll;
+    return '<tr><td>'+(i+1)+'</td><td>'+f.name+'</td><td>'+f.flatno+'</td><td>'+f.floor+'</td><td>'+f.type+'</td><td style="font-weight:700;">Rs. '+fmt(f.saleValue)+'</td><td style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(coll)+'</td><td style="font-weight:700;color:'+(rem>0?'#c0392b':'#1a7a3a')+';">Rs. '+fmt(rem)+'</td></tr>';
+  }).join('');
+  const partnerRows=D.partnerDefs.map(p=>{
+    const due=net*(p.share/100);
+    const openPaid=a.partnerOpening[p.id]||0;
+    const newPaid=(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+    const paid=openPaid+newPaid;
+    const rem=due-paid;
+    return '<tr><td><b>'+p.name+'</b></td><td>'+p.share+'%</td><td style="font-weight:700;">Rs. '+fmt(totalExp)+'</td><td style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(totalColl)+'</td><td style="font-weight:700;">Rs. '+fmt(net)+'</td><td style="font-weight:700;color:#b8943f;">Rs. '+fmt(due)+'</td><td style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(paid)+'</td><td style="font-weight:700;color:'+(rem>0?'#c0392b':'#1a7a3a')+';">Rs. '+fmt(Math.abs(rem))+'</td></tr>';
+  }).join('');
+
+  const win=window.open('','_blank','width=1100,height=800');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+co+' — '+month+'</title>'+
+  '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">'+
+  '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Outfit,sans-serif;background:#fff;padding:24px 32px;}'+
+  '.hdr{text-align:center;border-bottom:3px double #0f1f3d;padding-bottom:14px;margin-bottom:16px;}'+
+  '.hdr h1{font-size:22px;font-weight:900;color:#0f1f3d;}.hdr p{font-size:11px;color:#666;}.badge{display:inline-block;background:#0f1f3d;color:#b8943f;padding:4px 16px;border-radius:20px;font-size:12px;font-weight:700;margin-top:8px;}'+
+  '.meta{display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:14px;}'+
+  '.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}'+
+  '.stat{border:1px solid #dde6f0;border-radius:8px;padding:10px 14px;}.stat .lbl{font-size:9px;font-weight:700;text-transform:uppercase;color:#5a6a80;letter-spacing:.5px;}.stat .val{font-size:18px;font-weight:800;margin-top:4px;}'+
+  '.sec{font-size:14px;font-weight:800;color:#0f1f3d;margin:14px 0 8px;border-left:4px solid #b8943f;padding-left:10px;}'+
+  'table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;}thead tr{background:#0f1f3d;}thead th{color:#b8943f;padding:8px 10px;text-align:left;font-weight:700;font-size:11px;}tbody tr{border-bottom:1px solid #dde6f0;}tbody td{padding:6px 10px;}tfoot tr{background:#f0f4fa;font-weight:700;}tfoot td{padding:8px 10px;border-top:2px solid #dde6f0;}'+
+  '.sign{display:flex;gap:30px;margin-top:40px;padding-top:14px;border-top:2px solid #0f1f3d;}'+
+  '.sign div{flex:1;text-align:center;font-size:11px;font-weight:700;color:#5a6a80;}'+
+  '.sign .line{height:36px;border-bottom:1px solid #0f1f3d;margin-bottom:5px;}'+
+  '@media print{@page{margin:1cm;}}'+
+  '</style></head><body>'+
+  '<div class="hdr"><h1>'+co+'</h1><p>'+D.settings.address+' | '+D.settings.phone+'</p><div class="badge">MONTHLY CLOSING — '+month+'</div></div>'+
+  '<div class="meta"><span>Closed: '+new Date(a.closedAt).toLocaleString('en-PK')+'</span><span>MNR ERP v2</span></div>'+
+  '<div class="stats">'+
+  '<div class="stat" style="border-left:4px solid #c0392b;"><div class="lbl">Total Expenses</div><div class="val" style="color:#c0392b;">Rs. '+fmt(totalExp)+'</div></div>'+
+  '<div class="stat" style="border-left:4px solid #1a7a3a;"><div class="lbl">Flat Collection</div><div class="val" style="color:#1a7a3a;">Rs. '+fmt(totalColl)+'</div></div>'+
+  '<div class="stat" style="border-left:4px solid #b8943f;"><div class="lbl">Net Balance</div><div class="val" style="color:#b8943f;">Rs. '+fmt(net)+'</div></div>'+
+  '</div>'+
+  '<div class="sec">📊 Category-wise Expenses</div>'+
+  '<table><thead><tr><th>Category</th><th>Opening Balance</th><th>This Month</th><th>Total</th></tr></thead><tbody>'+catRows+'</tbody>'+
+  '<tfoot><tr><td><b>TOTAL</b></td><td style="font-weight:700;color:#b8943f;"><b>Rs. '+fmt(openTotal)+'</b></td><td style="font-weight:700;color:#c0392b;"><b>Rs. '+fmt(expTotal)+'</b></td><td style="font-weight:700;"><b>Rs. '+fmt(totalExp)+'</b></td></tr></tfoot></table>'+
+  '<div class="sec">💸 Expense Details ('+a.expenses.length+' entries)</div>'+
+  '<table><thead><tr><th>#</th><th>Date</th><th>Category</th><th>Vendor</th><th>Amount</th><th>Voucher</th><th>Mode</th><th>Remarks</th></tr></thead><tbody>'+expRows+'</tbody></table>'+
+  '<div class="sec">🏠 Flat Collection</div>'+
+  '<table><thead><tr><th>#</th><th>Client</th><th>Flat</th><th>Floor</th><th>Type</th><th>Sale Value</th><th>Collected</th><th>Remaining</th></tr></thead><tbody>'+flatRows+'</tbody></table>'+
+  '<div class="sec">👥 Partner Share — Detailed</div>'+
+  '<div style="background:#f8f9ff;border-radius:8px;padding:12px;margin-bottom:10px;font-size:12px;">'+
+  '<b>Formula:</b> Total Expenses − Flat Collection = Net Balance → × Share% = Due</div>'+
+  '<table><thead><tr><th>Partner</th><th>Share%</th><th>Total Exp</th><th>− Collection</th><th>= Net</th><th>× Share = Due</th><th>Paid</th><th>Remaining</th></tr></thead><tbody>'+partnerRows+'</tbody></table>'+
+  '<div class="sec">📋 Reconciliation Statement</div>'+
+  '<div style="background:#f8f9ff;border-radius:8px;padding:14px;margin-bottom:10px;">'+
+  '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #dde6f0;font-size:12px;"><span>Opening Balance (Carry Forward)</span><span style="font-weight:700;color:#1565c0;">Rs. '+fmt(openTotal)+'</span></div>'+
+  '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #dde6f0;font-size:12px;"><span>This Month Expenses</span><span style="font-weight:700;color:#c0392b;">Rs. '+fmt(expTotal)+'</span></div>'+
+  '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #dde6f0;font-size:12px;font-weight:800;"><span>Total Project Cost</span><span style="color:#c0392b;">Rs. '+fmt(totalExp)+'</span></div>'+
+  '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #dde6f0;font-size:12px;"><span>Flat Collection</span><span style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(totalColl)+'</span></div>'+
+  '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:800;border-top:2px solid #0f1f3d;margin-top:4px;"><span>Net Balance (Distributed to Partners)</span><span>Rs. '+fmt(net)+'</span></div>'+
+  '</div>'+
+  '<table style="margin-bottom:20px;"><thead><tr><th>Partner</th><th>Share%</th><th>Net Balance</th><th>Due Amount</th><th>Total Paid</th><th>Remaining</th><th>Status</th></tr></thead><tbody>'+
+  D.partnerDefs.map(p=>{
+    const due=net*(p.share/100);
+    const openPaid=a.partnerOpening[p.id]||0;
+    const newPaid=(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+    const paid=openPaid+newPaid;
+    const rem=due-paid;
+    return '<tr><td><b>'+p.name+'</b></td><td>'+p.share+'%</td><td style="font-weight:700;">Rs. '+fmt(net)+'</td><td style="font-weight:700;color:#b8943f;">Rs. '+fmt(due)+'</td><td style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(paid)+'</td><td style="font-weight:700;color:'+(rem>0?'#c0392b':'#1a7a3a')+';">Rs. '+fmt(Math.abs(rem))+'</td><td>'+(rem>0?'⚠ Pending':'✅ Clear')+'</td></tr>';
+  }).join('')+
+  '</tbody></table>'+
+  '<div class="sign"><div><div class="line"></div>Prepared By</div><div><div class="line"></div>Checked By</div><div><div class="line"></div>Approved By (CEO)</div></div>'+
+  '</body></html>');
+  win.document.close();
+  win.onload=()=>{win.focus();win.print();}
 }
 
 // ===== OPENING BALANCE =====
@@ -1181,9 +1637,33 @@ function renderDashboard(){
 
 // ===== EXPENSES =====
 function saveExpense(){
+  if(D.monthLocked) return showAlert('exp-alert','e','❌ Month locked hai! Pehle unlock karein.');
   const vendor=document.getElementById('exp-vendor').value.trim();
   const amount=Number(document.getElementById('exp-amount').value);
   if(!vendor||!amount) return showAlert('exp-alert','e','Vendor aur Amount zaroori!');
+  const editId=document.getElementById('exp-edit-id').value;
+  if(editId){
+    // UPDATE existing
+    const idx=D.expenses.findIndex(x=>x.id===editId);
+    if(idx>-1){
+      D.expenses[idx]={
+        ...D.expenses[idx],
+        category:document.getElementById('exp-cat').value,
+        date:document.getElementById('exp-date').value||today(),
+        vendor,amount,
+        vno:document.getElementById('exp-vno').value.trim()||D.expenses[idx].vno,
+        mode:document.getElementById('exp-mode').value,
+        remarks:document.getElementById('exp-remarks').value,
+      };
+      saveDB();
+      showAlert('exp-alert','s','✅ Expense update ho gaya!');
+      cancelEditExpense();
+      renderExpStats();
+      renderExpenses();
+    }
+    return;
+  }
+  // NEW entry
   const vno=document.getElementById('exp-vno').value.trim()||nextVno();
   const entry={
     id:'e'+Date.now(),
@@ -1222,6 +1702,11 @@ function renderExpStats(){
   }).join('');
 }
 
+function expActions(id){
+  if(D.monthLocked) return '<span class="badge b-red">🔒 Locked</span>';
+  return '<button class="btn btn-gold btn-xs" onclick="editExpense(\''+id+'\')">✏️ Edit</button> <button class="btn btn-navy btn-xs" onclick="printExpVoucher(\''+id+'\')">🖨️</button> <button class="btn btn-red btn-xs" onclick="deleteExpense(\''+id+'\')">Del</button>';
+}
+
 function renderExpenses(){
   const filter=document.getElementById('exp-filter')?.value||'all';
   const q=(document.getElementById('exp-search')?.value||'').toLowerCase();
@@ -1246,16 +1731,72 @@ function renderExpenses(){
       <td><b>${e.vno||'—'}</b></td>
       <td><span class="badge b-blue">${e.mode||'Cash'}</span></td>
       <td>${e.remarks||'—'}</td>
-      <td class="no-print">
-        <button class="btn btn-navy btn-xs" onclick="printExpVoucher('${e.id}')">🖨️</button>
-        <button class="btn btn-red btn-xs" onclick="deleteExpense('${e.id}')">Del</button>
-      </td>
+      <td class="no-print">${expActions(e.id)}</td>
     </tr>`;
   }).join(''):'<tr><td colspan="9" class="empty">No expenses found</td></tr>';
   document.getElementById('exp-total-amt').textContent='Rs. '+fmt(tot);
 }
 
-function deleteExpense(id){if(!confirm('Delete?'))return;D.expenses=D.expenses.filter(x=>x.id!==id);saveDB();renderExpStats();renderExpenses();}
+function editExpense(id){
+  if(D.monthLocked){alert('❌ Month locked hai! Pehle unlock karein.');return;}
+  const e=D.expenses.find(x=>x.id===id);
+  if(!e) return;
+  // Fill form with existing data
+  document.getElementById('exp-cat').value=e.category;
+  document.getElementById('exp-date').value=e.date;
+  document.getElementById('exp-vendor').value=e.vendor;
+  document.getElementById('exp-amount').value=e.amount;
+  document.getElementById('exp-vno').value=e.vno||'';
+  document.getElementById('exp-mode').value=e.mode||'Cash';
+  document.getElementById('exp-remarks').value=e.remarks||'';
+  // Mark as editing
+  document.getElementById('exp-edit-id').value=id;
+  document.getElementById('exp-save-btn').textContent='💾 Update Expense';
+  document.getElementById('exp-save-btn').style.background='linear-gradient(135deg,#1565c0,#1976d2)';
+  document.getElementById('exp-save-btn').style.color='#fff';
+  document.getElementById('exp-edit-banner').style.display='flex';
+  // Scroll to form
+  document.getElementById('pg-expenses').querySelector('.card').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelEditExpense(){
+  document.getElementById('exp-edit-id').value='';
+  document.getElementById('exp-save-btn').textContent='💾 Save Expense';
+  document.getElementById('exp-save-btn').style.background='';
+  document.getElementById('exp-save-btn').style.color='';
+  document.getElementById('exp-edit-banner').style.display='none';
+  clearExpense();
+}
+
+function editExpense(id){
+  if(D.monthLocked){alert('❌ Month locked hai! Pehle unlock karein.');return;}
+  const e=D.expenses.find(x=>x.id===id);
+  if(!e) return;
+  document.getElementById('exp-cat').value=e.category;
+  document.getElementById('exp-date').value=e.date;
+  document.getElementById('exp-vendor').value=e.vendor;
+  document.getElementById('exp-amount').value=e.amount;
+  document.getElementById('exp-vno').value=e.vno||'';
+  document.getElementById('exp-mode').value=e.mode||'Cash';
+  document.getElementById('exp-remarks').value=e.remarks||'';
+  document.getElementById('exp-edit-id').value=id;
+  document.getElementById('exp-save-btn').textContent='💾 Update Expense';
+  document.getElementById('exp-save-btn').style.background='linear-gradient(135deg,#1565c0,#1976d2)';
+  document.getElementById('exp-save-btn').style.color='#fff';
+  document.getElementById('exp-edit-banner').style.display='flex';
+  document.getElementById('pg-expenses').querySelector('.card').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelEditExpense(){
+  document.getElementById('exp-edit-id').value='';
+  document.getElementById('exp-save-btn').textContent='💾 Save Expense';
+  document.getElementById('exp-save-btn').style.background='';
+  document.getElementById('exp-save-btn').style.color='';
+  document.getElementById('exp-edit-banner').style.display='none';
+  clearExpense();
+}
+
+function deleteExpense(id){if(D.monthLocked){alert('❌ Month locked hai! Pehle unlock karein.');return;}if(!confirm('Delete?'))return;D.expenses=D.expenses.filter(x=>x.id!==id);saveDB();renderExpStats();renderExpenses();}
 
 function previewVoucher(){
   const vendor=document.getElementById('exp-vendor').value.trim();
@@ -2325,7 +2866,3 @@ function printSection(section){
 </script>
 </body>
 </html>
-
-
-
-
