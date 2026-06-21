@@ -790,6 +790,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <div class="card">
     <div class="card-header">
       <h3>🗂️ Month History — Sab Mahine</h3>
+      <button class="btn btn-blue btn-sm no-print" onclick="recoverArchive()">🔄 Recover Data</button>
     </div>
     <div class="card-body">
       <div id="history-list"></div>
@@ -1273,6 +1274,69 @@ function executeMonthClose(){
   renderAll();
   alert('✅ '+archive.month+' close ho gaya! \n➡️ '+nextMonth+' shuru ho gaya!\n\nHistory tab mein dekh sakte hain.');
   showPage('history');
+}
+
+function recoverArchive(){
+  // Check localStorage backup first
+  const backup=localStorage.getItem('mnr3_archive');
+  if(backup){
+    try{
+      const arr=JSON.parse(backup);
+      if(arr&&arr.length>0){
+        D.monthArchive=arr;
+        saveDB();
+        renderHistory();
+        alert('✅ Archive recover ho gaya! '+arr.length+' months mile.');
+        return;
+      }
+    }catch(x){}
+  }
+  // Try to get from Firebase directly
+  fetch(FB+'/mnr3_data.json')
+    .then(r=>r.json())
+    .then(d=>{
+      console.log('Firebase raw data:', JSON.stringify(d).substring(0,500));
+      if(d&&d.monthArchive&&d.monthArchive.length>0){
+        D.monthArchive=d.monthArchive;
+        localStorage.setItem('mnr3_archive',JSON.stringify(d.monthArchive));
+        saveDB();
+        renderHistory();
+        alert('✅ Firebase se '+d.monthArchive.length+' months recover ho gaye!');
+      } else {
+        alert('⚠️ Koi archive nahi mila.\n\nFirebase mein monthArchive field nahi hai.\nAb se close karne par sahi save hoga.');
+      }
+    })
+    .catch(()=>alert('❌ Firebase connect nahi ho saka.'));
+}
+
+function recoverArchive(){
+  const backup=localStorage.getItem('mnr3_archive');
+  if(backup){
+    try{
+      const arr=JSON.parse(backup);
+      if(arr&&arr.length>0){
+        D.monthArchive=arr;
+        saveDB();
+        renderHistory();
+        alert('✅ Archive recover ho gaya! '+arr.length+' months mile.');
+        return;
+      }
+    }catch(x){}
+  }
+  fetch(FB+'/mnr3_data.json')
+    .then(r=>r.json())
+    .then(d=>{
+      if(d&&d.monthArchive&&d.monthArchive.length>0){
+        D.monthArchive=d.monthArchive;
+        localStorage.setItem('mnr3_archive',JSON.stringify(d.monthArchive));
+        saveDB();
+        renderHistory();
+        alert('✅ Firebase se '+d.monthArchive.length+' months recover ho gaye!');
+      } else {
+        alert('⚠️ Koi purana archive nahi mila.\nAb se close karne par sahi save hoga.');
+      }
+    })
+    .catch(()=>alert('❌ Firebase connect nahi ho saka.'));
 }
 
 function renderHistory(){
