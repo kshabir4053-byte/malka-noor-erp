@@ -1111,7 +1111,7 @@ function showPage(p){
     partners:()=>{renderPartnerCards();renderPartnerLedger();buildPartnerDropdowns();},
     recon:renderReconciliation,
     contractors:renderContractors,
-    history:()=>{renderHistory();}
+    history:()=>{setTimeout(renderHistory,50);}
   };
   if(renders[p]) renders[p]();
 }
@@ -1260,8 +1260,8 @@ function executeMonthClose(){
   saveDB();
   document.getElementById('close-month-modal').style.display='none';
   renderAll();
-  renderHistory();
-  alert('✅ '+archive.month+' close ho gaya! \n➡️ '+nextMonth+' shuru ho gaya!');
+  alert('✅ '+archive.month+' close ho gaya! \n➡️ '+nextMonth+' shuru ho gaya!\n\nHistory tab mein dekh sakte hain.');
+  showPage('history');
 }
 
 function renderHistory(){
