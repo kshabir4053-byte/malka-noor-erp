@@ -1013,6 +1013,10 @@ function showSync(msg,color){
 async function saveDB(){
   try{
     localStorage.setItem('mnr3_data',JSON.stringify(D));
+    // Also save monthArchive separately in localStorage as backup
+    if(D.monthArchive&&D.monthArchive.length>0){
+      localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive));
+    }
   }catch(le){
     console.error('LocalStorage save failed:',le);
   }
@@ -1032,6 +1036,13 @@ async function loadAll(){
     const d=await r.json();
     if(d&&d.flats&&d.flats.length>0){
       D=mergeDefaults(d);
+      // Agar Firebase mein monthArchive nahi hai to localStorage backup se lo
+      if(!D.monthArchive||D.monthArchive.length===0){
+        const archiveBackup=localStorage.getItem('mnr3_archive');
+        if(archiveBackup){
+          try{D.monthArchive=JSON.parse(archiveBackup);}catch(x){}
+        }
+      }
       localStorage.setItem('mnr3_data',JSON.stringify(D));
       showSync('☁️ Cloud data loaded!','#1a7a3a');
       renderAll();
@@ -1268,8 +1279,13 @@ function renderHistory(){
   const list=document.getElementById('history-list');
   if(!list) return;
   const archives=D.monthArchive||[];
+  console.log('renderHistory called, archives:', archives.length, JSON.stringify(archives.map(a=>a.month)));
   if(!archives.length){
-    list.innerHTML='<div class="empty">Koi closed month nahi hai abhi.</div>';
+    list.innerHTML='<div class="empty" style="text-align:center;padding:40px;">'+
+      '<div style="font-size:40px;margin-bottom:12px;">📭</div>'+
+      '<div style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:6px;">Koi closed month nahi hai</div>'+
+      '<div style="font-size:12px;color:var(--text2);">Close Month button se month close karein</div>'+
+      '</div>';
     return;
   }
   list.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">'+
