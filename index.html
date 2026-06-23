@@ -1243,7 +1243,7 @@ function executeMonthClose(){
   const archive={
     month:D.activeMonth,
     locked:true,
-    closedAt:new Date().toISOString(),
+    closedAt:D.activeMonth+'-01T00:00:00.000Z',
     expenses:[...D.expenses],
     partners:[...D.partners],
     flats:JSON.parse(JSON.stringify(D.flats)),
@@ -1269,11 +1269,26 @@ function executeMonthClose(){
   D.monthly=[];
   D.contractors=[...D.contractors]; // contractors carry forward as is
 
-  saveDB();
+  // Save locally first, then Firebase (without reloading)
+  try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(e){}
+  try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive)); }catch(e){}
+  // Push to Firebase without triggering reload
+  fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)})
+    .then(r=>{ if(r.ok) showSync('✅ Saved!','#1a7a3a'); })
+    .catch(()=>showSync('📱 Local save only','orange'));
   document.getElementById('close-month-modal').style.display='none';
-  renderAll();
-  alert('✅ '+archive.month+' close ho gaya! \n➡️ '+nextMonth+' shuru ho gaya!\n\nHistory tab mein dekh sakte hain.');
+  // Update UI without reloading from Firebase
+  updateMonthBadge();
+  renderDashboard();
+  renderOpeningBalance();
+  renderExpStats();
+  renderExpenses();
+  renderMonthly();
+  renderPartnerCards();
+  buildPartnerDropdowns();
+  renderReconciliation();
   showPage('history');
+  alert('✅ '+archive.month+' close ho gaya!\n➡️ '+nextMonth+' shuru ho gaya!');
 }
 
 function recoverArchive(){
@@ -1361,7 +1376,7 @@ function renderHistory(){
       const net=totalExp-totalColl;
       return '<div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.08);border-top:4px solid var(--gold);">'+
         '<div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:4px;">📅 '+a.month+'</div>'+
-        '<div style="font-size:10px;color:var(--text2);margin-bottom:10px;">'+new Date(a.closedAt).toLocaleDateString('en-PK')+'</div>'+
+        '<div style="font-size:10px;color:var(--text2);margin-bottom:10px;">📅 Month: '+a.month+'</div>'+
         '<div style="font-size:12px;display:flex;justify-content:space-between;padding:3px 0;"><span>Expenses</span><span class="text-red">Rs. '+fmt(expTotal)+'</span></div>'+
         '<div style="font-size:12px;display:flex;justify-content:space-between;padding:3px 0;"><span>Collection</span><span class="text-green">Rs. '+fmt(totalColl)+'</span></div>'+
         '<div style="font-size:12px;display:flex;justify-content:space-between;padding:3px 0;border-top:1px solid #dde6f0;font-weight:700;"><span>Net</span><span>Rs. '+fmt(net)+'</span></div>'+
@@ -1436,8 +1451,25 @@ function reopenMonth(month){
   D.opening={...a.opening};D.partnerOpening={...a.partnerOpening};
   D.contractors=[...a.contractors];D.monthly=[...(a.monthly||[])];
   D.monthArchive=D.monthArchive.filter(x=>x.month!==month);
-  saveDB();renderAll();renderHistory();showPage('dashboard');
-  alert('✅ '+month+' wapas active ho gaya!');
+  // Save without Firebase reload
+  try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(e){}
+  try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive)); }catch(e){}
+  fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)})
+    .then(r=>{ if(r.ok) showSync('✅ Saved!','#1a7a3a'); })
+    .catch(()=>showSync('📱 Local save only','orange'));
+  // Update UI
+  updateMonthBadge();
+  renderDashboard();
+  renderOpeningBalance();
+  renderExpStats();
+  renderExpenses();
+  renderMonthly();
+  renderPartnerCards();
+  buildPartnerDropdowns();
+  renderReconciliation();
+  renderHistory();
+  showPage('dashboard');
+  alert('✅ '+month+' wapas active ho gaya!\nAb entries edit kar sakte hain.');
 }
 
 function deleteMonthArchive(month){
