@@ -1199,11 +1199,11 @@ function closeMonthConfirm(){
     '<div style="margin-top:10px;font-weight:700;margin-bottom:6px;">Partner Shares:</div>'+pRows+
     '</div>';
 
-  // Next month auto calculate
-  const parts=D.activeMonth.split('-');
-  let y=parseInt(parts[0]),mo=parseInt(parts[1]);
-  mo++;if(mo>12){mo=1;y++;}
-  const nextM=y+'-'+String(mo).padStart(2,'0');
+  // Next month auto calculate - use Date object to avoid bugs
+  const activeParts=D.activeMonth.split('-');
+  const activeDate=new Date(parseInt(activeParts[0]), parseInt(activeParts[1])-1, 1);
+  activeDate.setMonth(activeDate.getMonth()+1);
+  const nextM=activeDate.getFullYear()+'-'+String(activeDate.getMonth()+1).padStart(2,'0');
   document.getElementById('next-month-input').value=nextM;
 
   document.getElementById('close-month-modal').style.display='flex';
@@ -1229,11 +1229,12 @@ function executeMonthClose(){
   });
 
   // Flat payment totals for carry forward (cumulative)
+  // date='carry-forward' taake kisi bhi month ki autoFill mein count na ho
   const flatCarry=D.flats.map(f=>({
     ...f,
     payments:[{
       amount:f.payments.reduce((s,p)=>s+Number(p.amount||0),0),
-      date:D.activeMonth+'-01',
+      date:'carry-forward',
       mode:'Carry Forward',
       remarks:'Carry forward from '+D.activeMonth
     }]
