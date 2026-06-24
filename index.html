@@ -587,7 +587,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
           <input type="number" id="mc-exp" placeholder="0">
         </div>
         <div class="form-group">
-          <label>Flat Amount Received (Rs.) <span style="color:var(--gold)">Auto</span></label>
+          <label>Flat Amount Received (Rs.) <span style="color:var(--gold);font-size:10px;">Sirf is month ki collection — partner share mein count nahi</span></label>
           <input type="number" id="mc-recv" placeholder="0">
         </div>
         <div class="form-group">
@@ -2016,8 +2016,8 @@ function autoFillMonthly(){
     return py===y&&pm===m;
   }).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
   document.getElementById('mc-exp').value=monthExp||0;
-  document.getElementById('mc-recv').value=monthColl||0;
-  showAlert('monthly-alert','s',`✅ Auto-filled! Expenses: Rs. ${fmt(monthExp)} | Collection: Rs. ${fmt(monthColl)}`);
+  document.getElementById('mc-recv').value=monthColl||0; // Us month ki actual flat payments (sirf record)
+  showAlert('monthly-alert','s',`✅ Auto-filled! Expenses: Rs. ${fmt(monthExp)} | Flat Collection: Rs. ${fmt(monthColl)}`);
 }
 
 function saveMonthly(){
@@ -2051,10 +2051,10 @@ function renderMonthly(){
   D.partnerDefs.forEach(p=>partnerTotals[p.id]=0);
 
   document.getElementById('monthly-tbody').innerHTML=sorted.length?sorted.map((m,i)=>{
-    // Sirf expenses partners mein divide honge - flat collection alag track
     const exp=Number(m.exp||0);
     const recv=Number(m.recv||0);
     totExp+=exp;totRecv+=recv;
+    // Partner share sirf expenses se nikle - recv sirf info
     const partnerCols=D.partnerDefs.map(p=>{
       const share=exp*(p.share/100);
       partnerTotals[p.id]+=share;
@@ -2063,7 +2063,7 @@ function renderMonthly(){
     return`<tr>
       <td>${sorted.length-i}</td><td><b>${m.month}</b></td>
       <td class="text-red amount">Rs. ${fmt(exp)}</td>
-      <td class="text-green amount">Rs. ${fmt(recv)}</td>
+      <td class="text-green amount">${recv>0?'Rs. '+fmt(recv):'<span style="color:var(--text2);font-size:11px;">0</span>'}</td>
       ${partnerCols}
       <td>${m.remarks||'—'}</td>
       <td class="no-print"><button class="btn btn-red btn-xs" onclick="deleteMonthly('${m.id}')">Del</button></td>
