@@ -2044,7 +2044,7 @@ function renderMonthly(){
   if(!theadRow) return;
 
   let partnerHeaders=D.partnerDefs.map(p=>`<th>${p.name} ${p.share}%</th>`).join('');
-  theadRow.innerHTML=`<th>#</th><th>Month</th><th>Expenses</th><th>Flat Received</th>${partnerHeaders}<th>Remarks</th><th class="no-print">Del</th>`;
+  theadRow.innerHTML=`<th>#</th><th>Month</th><th>Expenses</th><th>Flat Received</th><th>Net (Exp-Recv)</th>${partnerHeaders}<th>Remarks</th><th class="no-print">Del</th>`;
 
   const sorted=[...D.monthly].sort((a,b)=>b.month.localeCompare(a.month));
   let totExp=0,totRecv=0,partnerTotals={};
@@ -2053,25 +2053,27 @@ function renderMonthly(){
   document.getElementById('monthly-tbody').innerHTML=sorted.length?sorted.map((m,i)=>{
     const exp=Number(m.exp||0);
     const recv=Number(m.recv||0);
+    const net=exp-recv; // Net = Expenses - Flat Collection
     totExp+=exp;totRecv+=recv;
-    // Partner share sirf expenses se nikle - recv sirf info
     const partnerCols=D.partnerDefs.map(p=>{
-      const share=exp*(p.share/100);
+      const share=net*(p.share/100); // Partner share net se
       partnerTotals[p.id]+=share;
-      return`<td class="amount text-red">Rs. ${fmt(share)}</td>`;
+      return`<td class="amount ${share>=0?'text-red':'text-green'}">Rs. ${fmt(share)}</td>`;
     }).join('');
     return`<tr>
       <td>${sorted.length-i}</td><td><b>${m.month}</b></td>
       <td class="text-red amount">Rs. ${fmt(exp)}</td>
-      <td class="text-green amount">${recv>0?'Rs. '+fmt(recv):'<span style="color:var(--text2);font-size:11px;">0</span>'}</td>
+      <td class="text-green amount">${recv>0?'Rs. '+fmt(recv):'<span style="color:var(--text2);">—</span>'}</td>
+      <td class="text-gold amount">Rs. ${fmt(net)}</td>
       ${partnerCols}
       <td>${m.remarks||'—'}</td>
       <td class="no-print"><button class="btn btn-red btn-xs" onclick="deleteMonthly('${m.id}')">Del</button></td>
     </tr>`;
   }).join(''):'<tr><td colspan="20" class="empty">No records</td></tr>';
 
-  const partnerFooters=D.partnerDefs.map(p=>`<td class="amount text-red">Rs. ${fmt(partnerTotals[p.id])}</td>`).join('');
-  tfootRow.innerHTML=`<td colspan="2"><b>TOTAL</b></td><td class="amount text-red">Rs. ${fmt(totExp)}</td><td class="amount text-green">Rs. ${fmt(totRecv)}</td>${partnerFooters}<td colspan="2"></td>`;
+  const totNet=totExp-totRecv;
+  const partnerFooters=D.partnerDefs.map(p=>`<td class="amount">Rs. ${fmt(partnerTotals[p.id])}</td>`).join('');
+  tfootRow.innerHTML=`<td colspan="2"><b>TOTAL</b></td><td class="amount text-red">Rs. ${fmt(totExp)}</td><td class="amount text-green">Rs. ${fmt(totRecv)}</td><td class="amount text-gold">Rs. ${fmt(totNet)}</td>${partnerFooters}<td colspan="2"></td>`;
 }
 
 function deleteMonthly(id){if(!confirm('Delete?'))return;D.monthly=D.monthly.filter(x=>x.id!==id);saveDB();renderMonthly();}
@@ -2886,16 +2888,18 @@ function printSection(section){
     const rows=sorted.map((m,i)=>{
       const exp=Number(m.exp||0);
       const recv=Number(m.recv||0);
+      const net=exp-recv;
       totExp+=exp;totRecv+=recv;
-      const pCols=D.partnerDefs.map(p=>{const s=exp*(p.share/100);partnerTotals[p.id]+=s;return`<td class="amount text-red">Rs. ${fmt(s)}</td>`;}).join('');
-      return`<tr><td>${i+1}</td><td><b>${m.month}</b></td><td class="text-red amount">Rs. ${fmt(exp)}</td><td class="text-green amount">Rs. ${fmt(recv)}</td>${pCols}<td>${m.remarks||'—'}</td></tr>`;
+      const pCols=D.partnerDefs.map(p=>{const s=net*(p.share/100);partnerTotals[p.id]+=s;return`<td class="amount">Rs. ${fmt(s)}</td>`;}).join('');
+      return`<tr><td>${i+1}</td><td><b>${m.month}</b></td><td class="text-red amount">Rs. ${fmt(exp)}</td><td class="text-green amount">Rs. ${fmt(recv)}</td><td class="text-gold amount">Rs. ${fmt(net)}</td>${pCols}<td>${m.remarks||'—'}</td></tr>`;
     }).join('');
-    const pFoot=D.partnerDefs.map(p=>`<td class="amount text-red">Rs. ${fmt(partnerTotals[p.id])}</td>`).join('');
+    const totNet=totExp-totRecv;
+    const pFoot=D.partnerDefs.map(p=>`<td class="amount">Rs. ${fmt(partnerTotals[p.id])}</td>`).join('');
     body=printHeader('MONTHLY CLOSING REPORT')+
     `<div class="section-title">📅 Monthly Closing Records (${sorted.length} months)</div>
-    <table><thead><tr><th>#</th><th>Month</th><th>Expenses</th><th>Flat Received</th>${partnerTH}<th>Remarks</th></tr></thead>
+    <table><thead><tr><th>#</th><th>Month</th><th>Expenses</th><th>Flat Received</th><th>Net</th>${partnerTH}<th>Remarks</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="20" style="text-align:center;padding:20px;color:#999;">No records</td></tr>'}</tbody>
-    <tfoot><tr><td colspan="2"><b>TOTAL</b></td><td class="amount text-red"><b>Rs. ${fmt(totExp)}</b></td><td class="amount text-green"><b>Rs. ${fmt(totRecv)}</b></td>${pFoot}<td></td></tr></tfoot></table>`;
+    <tfoot><tr><td colspan="2"><b>TOTAL</b></td><td class="amount text-red"><b>Rs. ${fmt(totExp)}</b></td><td class="amount text-green"><b>Rs. ${fmt(totRecv)}</b></td><td class="amount text-gold"><b>Rs. ${fmt(totNet)}</b></td>${pFoot}<td></td></tr></tfoot></table>`;
 
   } else if(section==='partners'){
     const filter=document.getElementById('pt-filter')?.value||'all';
