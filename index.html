@@ -1383,9 +1383,9 @@ function renderCatLedger(){
     return true;
   });
 
-  // Include opening balance as first entry if category selected
+  // Include opening balance sirf tab jab date filter nahi ho
   let openingEntry=[];
-  if(selectedCat!=='all'&&D.opening[selectedCat]){
+  if(selectedCat!=='all'&&D.opening[selectedCat]&&!from&&!to){
     openingEntry=[{
       id:'ob-'+selectedCat,
       date:'Opening Balance',
