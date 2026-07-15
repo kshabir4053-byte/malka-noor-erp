@@ -269,6 +269,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <div class="nav-tab" onclick="showPage('recon')">📋 Reconciliation</div>
   <div class="nav-tab" onclick="showPage('contractors')">🏗️ Contractors</div>
   <div class="nav-tab" onclick="showPage('history')">🗂️ Month History</div>
+  <div class="nav-tab" onclick="showPage('catledger')">📒 Category Ledger</div>
 </div>
 
 <div class="main">
@@ -587,7 +588,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
           <input type="number" id="mc-exp" placeholder="0">
         </div>
         <div class="form-group">
-          <label>Flat Amount Received (Rs.) <span style="color:var(--gold);font-size:10px;">Sirf is month ki collection — partner share mein count nahi</span></label>
+          <label>Flat Amount Received (Rs.) <span style="color:var(--gold)">Auto</span></label>
           <input type="number" id="mc-recv" placeholder="0">
         </div>
         <div class="form-group">
@@ -799,6 +800,40 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <div id="history-detail"></div>
 </div>
 
+<!-- ==================== CATEGORY LEDGER ==================== -->
+<div class="page" id="pg-catledger">
+  <div class="stats-grid" id="catledger-stats"></div>
+  <div class="card">
+    <div class="card-header">
+      <h3>📒 Category-wise Ledger</h3>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="catledger-filter" onchange="renderCatLedger()" class="filter-sel">
+          <option value="all">All Categories</option>
+        </select>
+        <input type="date" id="catledger-from" onchange="renderCatLedger()" style="padding:6px 10px;border:1px solid var(--gold);border-radius:8px;background:var(--dark);color:var(--gold);font-family:'Outfit',sans-serif;font-size:12px;">
+        <input type="date" id="catledger-to" onchange="renderCatLedger()" style="padding:6px 10px;border:1px solid var(--gold);border-radius:8px;background:var(--dark);color:var(--gold);font-family:'Outfit',sans-serif;font-size:12px;">
+        <button class="btn btn-navy btn-sm no-print" onclick="printSection('catledger')">🖨️ Print</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Date</th><th>Category</th><th>Vendor/Description</th>
+            <th>Amount</th><th>Voucher</th><th>Mode</th><th>Remarks</th>
+          </tr></thead>
+          <tbody id="catledger-tbody"></tbody>
+          <tfoot><tr>
+            <td colspan="4"><b>TOTAL</b></td>
+            <td id="catledger-total" class="amount text-red"></td>
+            <td colspan="3"></td>
+          </tr></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div><!-- end main -->
 
 <div id="sync-status"></div>
@@ -930,6 +965,16 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
         <button class="btn btn-gold" onclick="saveSettings()">💾 Save Settings</button>
         <button class="btn btn-red" onclick="if(confirm('All data delete ho jaye ga! Sure?'))resetAll()">⚠️ Reset All Data</button>
       </div>
+
+      <hr style="margin:20px 0;border-color:var(--border);">
+      <div style="font-size:13px;font-weight:800;color:var(--dark);margin-bottom:12px;">📂 Expense Categories</div>
+      <div class="info-box" style="margin-bottom:12px;font-size:12px;">Default categories (Steel, Cement etc.) hamesha rahenge. Nai custom categories add kar sakte hain.</div>
+      <div id="custom-cats-list" style="margin-bottom:12px;"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <input type="text" id="new-cat-key" placeholder="Key (e.g. tiles)" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;width:130px;">
+        <input type="text" id="new-cat-name" placeholder="Name (e.g. 🪟 Tiles)" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;flex:1;">
+        <button class="btn btn-green btn-sm" onclick="addCustomCat()">➕ Add</button>
+      </div>
     </div>
   </div>
 </div>
@@ -963,12 +1008,21 @@ let D = {
   voucherSeq: 1
 };
 
-const CATS = {
+// Default categories
+const DEFAULT_CATS = {
   steel:'🏗️ Steel',cement:'🧱 Cement',reeti:'🪨 Reeti & Crush',
   blocks:'📦 Blocks',hardware:'🔧 Hardware',speed:'⚡ Speed Money & CBC',
   labour:'👷 Site Labour',salary:'💼 Salary & Rent',
   construction:'🏢 Construction & Misc',office:'🏠 Office File'
 };
+
+// Dynamic CATS - D.customCats se merge hoga
+function getCats(){
+  return {...DEFAULT_CATS,...(D.customCats||{})};
+}
+// For backward compatibility
+let CATS = DEFAULT_CATS;
+function refreshCats(){ CATS={...DEFAULT_CATS,...(D.customCats||{})}; }
 
 const FB = 'https://malka-noor-erp-default-rtdb.firebaseio.com';
 
@@ -1087,7 +1141,8 @@ function mergeDefaults(d){
     expenses:[],flats:[],monthly:[],contractors:[],partners:[],voucherSeq:1,
     activeMonth:curMonth,
     monthLocked:false,
-    monthArchive:[]
+    monthArchive:[],
+    customCats:{}
   };
   return {...def,...d,settings:{...def.settings,...(d.settings||{})},opening:{...def.opening,...(d.opening||{})},partnerOpening:{...def.partnerOpening,...(d.partnerOpening||{})},partnerDefs:d.partnerDefs||def.partnerDefs,monthArchive:d.monthArchive||[]};
 }
@@ -1120,7 +1175,7 @@ function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
   document.getElementById('pg-'+p).classList.add('active');
-  const tabs=['dashboard','opening','expenses','flats','monthly','partners','recon','contractors','history'];
+  const tabs=['dashboard','opening','expenses','flats','monthly','partners','recon','contractors','history','catledger'];
   const idx=tabs.indexOf(p);
   if(idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   const renders={
@@ -1132,12 +1187,15 @@ function showPage(p){
     partners:()=>{renderPartnerCards();renderPartnerLedger();buildPartnerDropdowns();},
     recon:renderReconciliation,
     contractors:renderContractors,
-    history:()=>{setTimeout(renderHistory,50);}
+    history:()=>{setTimeout(renderHistory,50);},
+    catledger:()=>{renderCatLedger();}
   };
   if(renders[p]) renders[p]();
 }
 
 function renderAll(){
+  refreshCats();
+  renderExpenseForm();
   updateMonthBadge();
   renderDashboard();
   renderOpeningBalance();
@@ -1299,6 +1357,85 @@ function executeMonthClose(){
   renderReconciliation();
   showPage('history');
   alert('✅ '+archive.month+' close ho gaya!\n➡️ '+nextMonth+' shuru ho gaya!');
+}
+
+// ===== CATEGORY LEDGER =====
+function renderCatLedger(){
+  refreshCats();
+
+  // Update filter dropdown
+  const filter=document.getElementById('catledger-filter');
+  if(!filter) return;
+  const curFilter=filter.value;
+  filter.innerHTML='<option value="all">All Categories</option>'+
+    Object.entries(CATS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+  filter.value=curFilter;
+
+  const selectedCat=filter.value||'all';
+  const from=document.getElementById('catledger-from')?.value;
+  const to=document.getElementById('catledger-to')?.value;
+
+  // Filter expenses
+  let filtered=D.expenses.filter(e=>{
+    if(selectedCat!=='all'&&e.category!==selectedCat) return false;
+    if(from&&e.date<from) return false;
+    if(to&&e.date>to) return false;
+    return true;
+  });
+
+  // Include opening balance as first entry if category selected
+  let openingEntry=[];
+  if(selectedCat!=='all'&&D.opening[selectedCat]){
+    openingEntry=[{
+      id:'ob-'+selectedCat,
+      date:'Opening Balance',
+      category:selectedCat,
+      vendor:'Opening Balance (Dec 2022)',
+      amount:D.opening[selectedCat],
+      vno:'—',mode:'—',remarks:'Opening carry forward'
+    }];
+  }
+
+  const sorted=[...filtered].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const allEntries=[...openingEntry,...sorted];
+
+  let runningTotal=0;
+  let tot=0;
+
+  document.getElementById('catledger-tbody').innerHTML=allEntries.length?allEntries.map((e,i)=>{
+    runningTotal+=Number(e.amount||0);
+    tot+=Number(e.amount||0);
+    const isOpening=e.id&&e.id.startsWith('ob-');
+    return`<tr style="${isOpening?'background:rgba(21,101,192,.06);':''}" >
+      <td>${i+1}</td>
+      <td>${isOpening?'<span class="badge b-blue">Opening</span>':e.date}</td>
+      <td><span class="badge b-gold">${(CATS[e.category]||e.category).replace(/[^\w\s&]/g,'').trim()||e.category}</span></td>
+      <td><b>${e.vendor}</b></td>
+      <td class="amount text-red">Rs. ${fmt(e.amount)}</td>
+      <td>${e.vno||'—'}</td>
+      <td><span class="badge b-blue">${e.mode||'—'}</span></td>
+      <td>${e.remarks||'—'}</td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="8" class="empty">Koi entry nahi mili</td></tr>';
+
+  document.getElementById('catledger-total').textContent='Rs. '+fmt(tot);
+
+  // Stats cards - category wise totals
+  const statGrid=document.getElementById('catledger-stats');
+  if(statGrid){
+    const cats=selectedCat==='all'?Object.keys(CATS):[selectedCat];
+    statGrid.innerHTML=cats.map(k=>{
+      const openAmt=D.opening[k]||0;
+      const expAmt=D.expenses.filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+      const total=openAmt+expAmt;
+      if(!total) return '';
+      return`<div class="stat" style="border-left-color:var(--red);">
+        <div class="stat-label">${CATS[k]||k}</div>
+        <div class="stat-value text-red" style="font-size:16px;">Rs. ${fmt(total)}</div>
+        <div class="stat-sub">Opening: ${fmt(openAmt)} | New: ${fmt(expAmt)}</div>
+      </div>`;
+    }).filter(Boolean).join('');
+  }
 }
 
 function recoverArchive(){
@@ -2016,8 +2153,8 @@ function autoFillMonthly(){
     return py===y&&pm===m;
   }).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
   document.getElementById('mc-exp').value=monthExp||0;
-  document.getElementById('mc-recv').value=monthColl||0; // Us month ki actual flat payments (sirf record)
-  showAlert('monthly-alert','s',`✅ Auto-filled! Expenses: Rs. ${fmt(monthExp)} | Flat Collection: Rs. ${fmt(monthColl)}`);
+  document.getElementById('mc-recv').value=monthColl||0;
+  showAlert('monthly-alert','s',`✅ Auto-filled! Expenses: Rs. ${fmt(monthExp)} | Collection: Rs. ${fmt(monthColl)}`);
 }
 
 function saveMonthly(){
@@ -2044,36 +2181,34 @@ function renderMonthly(){
   if(!theadRow) return;
 
   let partnerHeaders=D.partnerDefs.map(p=>`<th>${p.name} ${p.share}%</th>`).join('');
-  theadRow.innerHTML=`<th>#</th><th>Month</th><th>Expenses</th><th>Flat Received</th><th>Net (Exp-Recv)</th>${partnerHeaders}<th>Remarks</th><th class="no-print">Del</th>`;
+  theadRow.innerHTML=`<th>#</th><th>Month</th><th>Expenses</th><th>Flat Received</th>${partnerHeaders}<th>Remarks</th><th class="no-print">Del</th>`;
 
   const sorted=[...D.monthly].sort((a,b)=>b.month.localeCompare(a.month));
   let totExp=0,totRecv=0,partnerTotals={};
   D.partnerDefs.forEach(p=>partnerTotals[p.id]=0);
 
   document.getElementById('monthly-tbody').innerHTML=sorted.length?sorted.map((m,i)=>{
+    // Sirf expenses partners mein divide honge - flat collection alag track
     const exp=Number(m.exp||0);
     const recv=Number(m.recv||0);
-    const net=exp-recv; // Net = Expenses - Flat Collection
     totExp+=exp;totRecv+=recv;
     const partnerCols=D.partnerDefs.map(p=>{
-      const share=net*(p.share/100); // Partner share net se
+      const share=exp*(p.share/100);
       partnerTotals[p.id]+=share;
-      return`<td class="amount ${share>=0?'text-red':'text-green'}">Rs. ${fmt(share)}</td>`;
+      return`<td class="amount text-red">Rs. ${fmt(share)}</td>`;
     }).join('');
     return`<tr>
       <td>${sorted.length-i}</td><td><b>${m.month}</b></td>
       <td class="text-red amount">Rs. ${fmt(exp)}</td>
-      <td class="text-green amount">${recv>0?'Rs. '+fmt(recv):'<span style="color:var(--text2);">—</span>'}</td>
-      <td class="text-gold amount">Rs. ${fmt(net)}</td>
+      <td class="text-green amount">Rs. ${fmt(recv)}</td>
       ${partnerCols}
       <td>${m.remarks||'—'}</td>
       <td class="no-print"><button class="btn btn-red btn-xs" onclick="deleteMonthly('${m.id}')">Del</button></td>
     </tr>`;
   }).join(''):'<tr><td colspan="20" class="empty">No records</td></tr>';
 
-  const totNet=totExp-totRecv;
-  const partnerFooters=D.partnerDefs.map(p=>`<td class="amount">Rs. ${fmt(partnerTotals[p.id])}</td>`).join('');
-  tfootRow.innerHTML=`<td colspan="2"><b>TOTAL</b></td><td class="amount text-red">Rs. ${fmt(totExp)}</td><td class="amount text-green">Rs. ${fmt(totRecv)}</td><td class="amount text-gold">Rs. ${fmt(totNet)}</td>${partnerFooters}<td colspan="2"></td>`;
+  const partnerFooters=D.partnerDefs.map(p=>`<td class="amount text-red">Rs. ${fmt(partnerTotals[p.id])}</td>`).join('');
+  tfootRow.innerHTML=`<td colspan="2"><b>TOTAL</b></td><td class="amount text-red">Rs. ${fmt(totExp)}</td><td class="amount text-green">Rs. ${fmt(totRecv)}</td>${partnerFooters}<td colspan="2"></td>`;
 }
 
 function deleteMonthly(id){if(!confirm('Delete?'))return;D.monthly=D.monthly.filter(x=>x.id!==id);saveDB();renderMonthly();}
@@ -2650,7 +2785,63 @@ function openSettingsModal(){
   document.getElementById('wa-flat').checked=!!t.flat;
   document.getElementById('wa-partner').checked=!!t.partner;
   document.getElementById('wa-monthly').checked=!!t.monthly;
+  renderCustomCatsList();
   document.getElementById('settings-modal').style.display='flex';
+}
+
+function renderCustomCatsList(){
+  const list=document.getElementById('custom-cats-list');
+  if(!list) return;
+  const custom=D.customCats||{};
+  const keys=Object.keys(custom);
+  if(!keys.length){
+    list.innerHTML='<div style="font-size:12px;color:var(--text2);padding:6px 0;">Koi custom category nahi hai abhi.</div>';
+    return;
+  }
+  list.innerHTML=keys.map(k=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#f8faff;border-radius:8px;margin-bottom:6px;border:1px solid var(--border);">
+      <span style="font-size:12px;font-weight:700;color:var(--text2);width:80px;">${k}</span>
+      <span style="flex:1;font-size:13px;font-weight:600;">${custom[k]}</span>
+      <button class="btn btn-red btn-xs" onclick="removeCustomCat('${k}')">✕ Remove</button>
+    </div>`).join('');
+}
+
+function addCustomCat(){
+  const key=document.getElementById('new-cat-key').value.trim().toLowerCase().replace(/\s+/g,'_');
+  const name=document.getElementById('new-cat-name').value.trim();
+  if(!key||!name){alert('Key aur Name dono zaroori hain!');return;}
+  if(DEFAULT_CATS[key]){alert('Ye key pehle se exist karti hai default mein!');return;}
+  if(!D.customCats) D.customCats={};
+  D.customCats[key]=name;
+  refreshCats();
+  saveDB();
+  renderCustomCatsList();
+  renderExpenseForm();
+  document.getElementById('new-cat-key').value='';
+  document.getElementById('new-cat-name').value='';
+  alert('✅ Category "'+name+'" add ho gayi!');
+}
+
+function removeCustomCat(key){
+  if(!confirm('Category "'+CATS[key]+'" remove karein?')) return;
+  delete D.customCats[key];
+  refreshCats();
+  saveDB();
+  renderCustomCatsList();
+  renderExpenseForm();
+}
+
+function renderExpenseForm(){
+  const sel=document.getElementById('exp-cat');
+  if(!sel) return;
+  sel.innerHTML=Object.entries(CATS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+  // Also update filter dropdown
+  const filter=document.getElementById('exp-filter');
+  if(filter){
+    const cur=filter.value;
+    filter.innerHTML='<option value="all">All Categories</option>'+Object.entries(CATS).map(([k,v])=>`<option value="${k}">${v.split(' ').slice(1).join(' ')||v}</option>`).join('');
+    filter.value=cur;
+  }
 }
 
 function closeSettingsModal(){document.getElementById('settings-modal').style.display='none';}
@@ -2888,18 +3079,16 @@ function printSection(section){
     const rows=sorted.map((m,i)=>{
       const exp=Number(m.exp||0);
       const recv=Number(m.recv||0);
-      const net=exp-recv;
       totExp+=exp;totRecv+=recv;
-      const pCols=D.partnerDefs.map(p=>{const s=net*(p.share/100);partnerTotals[p.id]+=s;return`<td class="amount">Rs. ${fmt(s)}</td>`;}).join('');
-      return`<tr><td>${i+1}</td><td><b>${m.month}</b></td><td class="text-red amount">Rs. ${fmt(exp)}</td><td class="text-green amount">Rs. ${fmt(recv)}</td><td class="text-gold amount">Rs. ${fmt(net)}</td>${pCols}<td>${m.remarks||'—'}</td></tr>`;
+      const pCols=D.partnerDefs.map(p=>{const s=exp*(p.share/100);partnerTotals[p.id]+=s;return`<td class="amount text-red">Rs. ${fmt(s)}</td>`;}).join('');
+      return`<tr><td>${i+1}</td><td><b>${m.month}</b></td><td class="text-red amount">Rs. ${fmt(exp)}</td><td class="text-green amount">Rs. ${fmt(recv)}</td>${pCols}<td>${m.remarks||'—'}</td></tr>`;
     }).join('');
-    const totNet=totExp-totRecv;
-    const pFoot=D.partnerDefs.map(p=>`<td class="amount">Rs. ${fmt(partnerTotals[p.id])}</td>`).join('');
+    const pFoot=D.partnerDefs.map(p=>`<td class="amount text-red">Rs. ${fmt(partnerTotals[p.id])}</td>`).join('');
     body=printHeader('MONTHLY CLOSING REPORT')+
     `<div class="section-title">📅 Monthly Closing Records (${sorted.length} months)</div>
-    <table><thead><tr><th>#</th><th>Month</th><th>Expenses</th><th>Flat Received</th><th>Net</th>${partnerTH}<th>Remarks</th></tr></thead>
+    <table><thead><tr><th>#</th><th>Month</th><th>Expenses</th><th>Flat Received</th>${partnerTH}<th>Remarks</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="20" style="text-align:center;padding:20px;color:#999;">No records</td></tr>'}</tbody>
-    <tfoot><tr><td colspan="2"><b>TOTAL</b></td><td class="amount text-red"><b>Rs. ${fmt(totExp)}</b></td><td class="amount text-green"><b>Rs. ${fmt(totRecv)}</b></td><td class="amount text-gold"><b>Rs. ${fmt(totNet)}</b></td>${pFoot}<td></td></tr></tfoot></table>`;
+    <tfoot><tr><td colspan="2"><b>TOTAL</b></td><td class="amount text-red"><b>Rs. ${fmt(totExp)}</b></td><td class="amount text-green"><b>Rs. ${fmt(totRecv)}</b></td>${pFoot}<td></td></tr></tfoot></table>`;
 
   } else if(section==='partners'){
     const filter=document.getElementById('pt-filter')?.value||'all';
@@ -2945,6 +3134,49 @@ function printSection(section){
     <div class="section-title">📒 Partner Ledger Entries</div>
     <table><thead><tr><th>#</th><th>Date</th><th>Partner</th><th>Description</th><th>Mode</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No entries</td></tr>'}</tbody></table>`;
+
+  } else if(section==='catledger'){
+    const selectedCat=document.getElementById('catledger-filter')?.value||'all';
+    const from=document.getElementById('catledger-from')?.value;
+    const to=document.getElementById('catledger-to')?.value;
+    let filtered=D.expenses.filter(e=>{
+      if(selectedCat!=='all'&&e.category!==selectedCat) return false;
+      if(from&&e.date<from) return false;
+      if(to&&e.date>to) return false;
+      return true;
+    });
+    const sorted=[...filtered].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    // Category wise totals
+    const catTotals={};
+    Object.keys(CATS).forEach(k=>{
+      const openAmt=D.opening[k]||0;
+      const expAmt=D.expenses.filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+      if(openAmt||expAmt) catTotals[k]={open:openAmt,exp:expAmt,total:openAmt+expAmt};
+    });
+    const catSummaryRows=Object.entries(catTotals).map(([k,v])=>
+      `<tr><td>${CATS[k]||k}</td><td class="amount text-blue">Rs. ${fmt(v.open)}</td><td class="amount text-red">Rs. ${fmt(v.exp)}</td><td class="amount" style="font-weight:800;">Rs. ${fmt(v.total)}</td></tr>`
+    ).join('');
+    let tot=0;
+    // Opening entry if single cat
+    let openRow='';
+    if(selectedCat!=='all'&&D.opening[selectedCat]){
+      tot+=D.opening[selectedCat];
+      openRow=`<tr style="background:rgba(21,101,192,.06);"><td>—</td><td><b>Opening Balance</b></td><td>${CATS[selectedCat]||selectedCat}</td><td>Opening Balance (Dec 2022)</td><td class="amount text-blue">Rs. ${fmt(D.opening[selectedCat])}</td><td>—</td><td>—</td><td>Carry forward</td></tr>`;
+    }
+    const rows=sorted.map((e,i)=>{
+      tot+=Number(e.amount);
+      return`<tr><td>${i+1}</td><td>${e.date}</td><td>${CATS[e.category]||e.category}</td><td>${e.vendor}</td><td class="amount text-red">Rs. ${fmt(e.amount)}</td><td>${e.vno||'—'}</td><td>${e.mode||'Cash'}</td><td>${e.remarks||'—'}</td></tr>`;
+    }).join('');
+    const catLabel=selectedCat==='all'?'All Categories':(CATS[selectedCat]||selectedCat);
+    const dateLabel=(from||to)?` | ${from||'Start'} to ${to||'End'}`:'';
+    body=printHeader('CATEGORY LEDGER — '+catLabel+dateLabel)+
+    `<div class="section-title">📊 Category Summary</div>
+    <table><thead><tr><th>Category</th><th>Opening Balance</th><th>New Expenses</th><th>Total</th></tr></thead>
+    <tbody>${catSummaryRows}</tbody></table>
+    <div class="section-title">📒 Ledger Entries — ${catLabel} (${sorted.length} entries)</div>
+    <table><thead><tr><th>#</th><th>Date</th><th>Category</th><th>Vendor/Description</th><th>Amount</th><th>Voucher</th><th>Mode</th><th>Remarks</th></tr></thead>
+    <tbody>${openRow}${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No records</td></tr>'}</tbody>
+    <tfoot><tr><td colspan="4"><b>TOTAL</b></td><td class="amount text-red"><b>Rs. ${fmt(tot)}</b></td><td colspan="3"></td></tr></tfoot></table>`;
 
   } else if(section==='recon'){
     // Reuse the already-rendered reconciliation HTML
