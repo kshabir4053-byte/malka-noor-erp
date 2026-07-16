@@ -1375,8 +1375,19 @@ function renderCatLedger(){
   const from=document.getElementById('catledger-from')?.value;
   const to=document.getElementById('catledger-to')?.value;
 
+  // Current month + archived months ka data combine karo
+  let allExpenses=[...D.expenses];
+  (D.monthArchive||[]).forEach(a=>{
+    (a.expenses||[]).forEach(e=>{
+      // Duplicate check - same id nahi hona chahiye
+      if(!allExpenses.find(x=>x.id===e.id)){
+        allExpenses.push(e);
+      }
+    });
+  });
+
   // Filter expenses
-  let filtered=D.expenses.filter(e=>{
+  let filtered=allExpenses.filter(e=>{
     if(selectedCat!=='all'&&e.category!==selectedCat) return false;
     if(from&&e.date<from) return false;
     if(to&&e.date>to) return false;
@@ -1420,13 +1431,13 @@ function renderCatLedger(){
 
   document.getElementById('catledger-total').textContent='Rs. '+fmt(tot);
 
-  // Stats cards - category wise totals
+  // Stats cards - category wise totals (sab months ka)
   const statGrid=document.getElementById('catledger-stats');
   if(statGrid){
     const cats=selectedCat==='all'?Object.keys(CATS):[selectedCat];
     statGrid.innerHTML=cats.map(k=>{
       const openAmt=D.opening[k]||0;
-      const expAmt=D.expenses.filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+      const expAmt=allExpenses.filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
       const total=openAmt+expAmt;
       if(!total) return '';
       return`<div class="stat" style="border-left-color:var(--red);">
@@ -2163,11 +2174,19 @@ function saveMonthly(){
   const recv=document.getElementById('mc-recv').value;
   if(!month) return showAlert('monthly-alert','e','Month zaroori hai!');
   const existing=D.monthly.find(m=>m.month===month);
-  if(existing&&!confirm(`${month} ka record already hai. Overwrite karein?`)) return;
-  if(existing) D.monthly=D.monthly.filter(m=>m.month!==month);
+  if(existing){
+    // Replace nahi, update karo existing entry
+    if(!confirm(month+' ka record pehle se hai.\nUpdate karein? (Data replace hoga)')) return;
+    const idx=D.monthly.findIndex(m=>m.month===month);
+    D.monthly[idx]={...D.monthly[idx],exp:Number(exp)||0,recv:Number(recv)||0,remarks:document.getElementById('mc-remarks').value,details:document.getElementById('mc-details').value,updatedAt:new Date().toISOString()};
+    saveDB();showAlert('monthly-alert','s','✅ '+month+' closing updated!');
+    clearMonthly();renderMonthly();renderReconciliation();
+    return;
+  }
+  // Nai entry
   const newEntry={id:'m'+Date.now(),month,exp:Number(exp)||0,recv:Number(recv)||0,remarks:document.getElementById('mc-remarks').value,details:document.getElementById('mc-details').value,createdAt:new Date().toISOString()};
   D.monthly.push(newEntry);
-  saveDB();showAlert('monthly-alert','s','✅ Monthly closing saved!');
+  saveDB();showAlert('monthly-alert','s','✅ '+month+' monthly closing saved!');
   sendWhatsApp('monthly', newEntry);
   clearMonthly();renderMonthly();renderReconciliation();
 }
@@ -2799,11 +2818,33 @@ function renderCustomCatsList(){
     return;
   }
   list.innerHTML=keys.map(k=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#f8faff;border-radius:8px;margin-bottom:6px;border:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#f8faff;border-radius:8px;margin-bottom:6px;border:1px solid var(--border);" id="catrow-${k}">
       <span style="font-size:12px;font-weight:700;color:var(--text2);width:80px;">${k}</span>
-      <span style="flex:1;font-size:13px;font-weight:600;">${custom[k]}</span>
-      <button class="btn btn-red btn-xs" onclick="removeCustomCat('${k}')">✕ Remove</button>
+      <span style="flex:1;font-size:13px;font-weight:600;" id="catname-${k}">${custom[k]}</span>
+      <input type="text" id="catedit-${k}" value="${custom[k]}" style="display:none;flex:1;padding:5px 10px;border:1.5px solid var(--gold);border-radius:7px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;">
+      <button class="btn btn-gold btn-xs" id="cateditbtn-${k}" onclick="startEditCat('${k}')">✏️ Edit</button>
+      <button class="btn btn-green btn-xs" id="catsavebtn-${k}" style="display:none;" onclick="saveEditCat('${k}')">💾 Save</button>
+      <button class="btn btn-red btn-xs" onclick="removeCustomCat('${k}')">🗑 Del</button>
     </div>`).join('');
+}
+
+function startEditCat(key){
+  document.getElementById('catname-'+key).style.display='none';
+  document.getElementById('catedit-'+key).style.display='block';
+  document.getElementById('cateditbtn-'+key).style.display='none';
+  document.getElementById('catsavebtn-'+key).style.display='inline-flex';
+  document.getElementById('catedit-'+key).focus();
+}
+
+function saveEditCat(key){
+  const newName=document.getElementById('catedit-'+key).value.trim();
+  if(!newName){alert('Name zaroori hai!');return;}
+  D.customCats[key]=newName;
+  refreshCats();
+  saveDB();
+  renderCustomCatsList();
+  renderExpenseForm();
+  alert('✅ Category update ho gayi!');
 }
 
 function addCustomCat(){
@@ -2823,7 +2864,7 @@ function addCustomCat(){
 }
 
 function removeCustomCat(key){
-  if(!confirm('Category "'+CATS[key]+'" remove karein?')) return;
+  if(!confirm('Category "'+CATS[key]+'" remove karein? Is category ki sab expenses bhi affected hongi!')) return;
   delete D.customCats[key];
   refreshCats();
   saveDB();
