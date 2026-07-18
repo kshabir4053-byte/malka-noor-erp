@@ -395,18 +395,21 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
       <div class="form-grid">
         <div class="form-group">
           <label>Category *</label>
-          <select id="exp-cat">
-            <option value="steel">🏗️ Steel</option>
-            <option value="cement">🧱 Cement</option>
-            <option value="reeti">🪨 Reeti & Crush</option>
-            <option value="blocks">📦 Blocks</option>
-            <option value="hardware">🔧 Hardware</option>
-            <option value="speed">⚡ Speed Money & CBC</option>
-            <option value="labour">👷 Site Labour</option>
-            <option value="salary">💼 Salary & Rent</option>
-            <option value="construction">🏢 Construction & Misc</option>
-            <option value="office">🏠 Office File</option>
-          </select>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="exp-cat" style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13.5px;font-family:'Outfit',sans-serif;outline:none;background:#fff;">
+              <option value="steel">🏗️ Steel</option>
+              <option value="cement">🧱 Cement</option>
+              <option value="reeti">🪨 Reeti & Crush</option>
+              <option value="blocks">📦 Blocks</option>
+              <option value="hardware">🔧 Hardware</option>
+              <option value="speed">⚡ Speed Money & CBC</option>
+              <option value="labour">👷 Site Labour</option>
+              <option value="salary">💼 Salary & Rent</option>
+              <option value="construction">🏢 Construction & Misc</option>
+              <option value="office">🏠 Office File</option>
+            </select>
+            <button type="button" class="btn btn-green btn-sm" onclick="quickAddCatModal()" title="Nai Category Add Karein" style="white-space:nowrap;padding:10px 12px;">➕ New</button>
+          </div>
         </div>
         <div class="form-group">
           <label>Date</label>
@@ -908,6 +911,35 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
       <div class="btn-row">
         <button class="btn btn-gold" onclick="savePartners()">💾 Save Partners</button>
         <button class="btn btn-navy" onclick="closeManagePartnersModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== QUICK ADD CATEGORY MODAL ==================== -->
+<div id="quick-cat-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeQuickCatModal()">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-header">
+      <h3>➕ Nai Category Add Karein</h3>
+      <button class="modal-close" onclick="closeQuickCatModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box" style="margin-bottom:16px;font-size:12px;">
+        Nai expense category add karein — ye foran dropdown mein aa jaye gi۔
+      </div>
+      <div class="form-grid" style="grid-template-columns:1fr;">
+        <div class="form-group">
+          <label>Category Key * <span style="font-size:10px;color:var(--text2);">(unique short word, no spaces)</span></label>
+          <input type="text" id="qc-key" placeholder="e.g. tiles, electrical, plumbing" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13.5px;font-family:'Outfit',sans-serif;outline:none;">
+        </div>
+        <div class="form-group">
+          <label>Category Name * <span style="font-size:10px;color:var(--text2);">(emoji + name)</span></label>
+          <input type="text" id="qc-name" placeholder="e.g. 🪟 Tiles Work" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13.5px;font-family:'Outfit',sans-serif;outline:none;" onkeydown="if(event.key==='Enter')saveQuickCat()">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green" onclick="saveQuickCat()">✅ Add Category</button>
+        <button class="btn btn-navy" onclick="closeQuickCatModal()">Cancel</button>
       </div>
     </div>
   </div>
@@ -2870,6 +2902,36 @@ function removeCustomCat(key){
   saveDB();
   renderCustomCatsList();
   renderExpenseForm();
+}
+
+function quickAddCatModal(){
+  document.getElementById('qc-key').value='';
+  document.getElementById('qc-name').value='';
+  document.getElementById('quick-cat-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('qc-key').focus(),100);
+}
+
+function closeQuickCatModal(){
+  document.getElementById('quick-cat-modal').style.display='none';
+}
+
+function saveQuickCat(){
+  const key=document.getElementById('qc-key').value.trim().toLowerCase().replace(/\s+/g,'_');
+  const name=document.getElementById('qc-name').value.trim();
+  if(!key){alert('Key zaroori hai! (e.g. tiles)');return;}
+  if(!name){alert('Category name zaroori hai! (e.g. 🪟 Tiles Work)');return;}
+  if(DEFAULT_CATS[key]){alert('⚠️ "'+key+'" pehle se default categories mein hai!');return;}
+  if((D.customCats||{})[key]){alert('⚠️ "'+key+'" pehle se exist karta hai!');return;}
+  if(!D.customCats) D.customCats={};
+  D.customCats[key]=name;
+  refreshCats();
+  saveDB();
+  renderExpenseForm();
+  // New category select karo
+  const sel=document.getElementById('exp-cat');
+  if(sel) sel.value=key;
+  closeQuickCatModal();
+  showAlert('exp-alert','s','✅ "'+name+'" category add ho gayi!');
 }
 
 function renderExpenseForm(){
