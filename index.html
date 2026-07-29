@@ -1573,6 +1573,7 @@ function renderHistory(){
         '<div style="margin-top:10px;display:flex;gap:6px;">'+
         '<button class="btn btn-navy btn-xs" onclick="viewMonthDetail(\'' + a.month + '\')">👁 View</button>'+
         '<button class="btn btn-gold btn-xs" onclick="printMonthArchive(\'' + a.month + '\')">🖨️ Print</button>'+
+        '<button class="btn btn-blue btn-xs" onclick="editArchivedMonth(\'' + a.month + '\')">✏️ Edit</button>'+
         '<button class="btn btn-green btn-xs" onclick="reopenMonth(\'' + a.month + '\')">🔓 Reopen</button>'+
         '<button class="btn btn-red btn-xs" onclick="deleteMonthArchive(\'' + a.month + '\')">🗑 Del</button>'+
         '</div></div>';
@@ -1580,45 +1581,6 @@ function renderHistory(){
   '</div>';
 }
 
-function reopenMonth(month){
-  if(D.activeMonth && D.activeMonth !== month){
-    if(!confirm('⚠️ Abhi '+D.activeMonth+' active hai.\n'+month+' reopen karne se current month ka data ARCHIVE ho jaye ga.\nPakka?')) return;
-    // Archive current active month first
-    const curArchive={
-      month:D.activeMonth,
-      locked:false,
-      closedAt:D.activeMonth+'-01T00:00:00.000Z',
-      expenses:[...D.expenses],
-      partners:[...D.partners],
-      flats:JSON.parse(JSON.stringify(D.flats)),
-      opening:{...D.opening},
-      partnerOpening:{...D.partnerOpening},
-      contractors:[...D.contractors],
-      monthly:[...D.monthly]
-    };
-    D.monthArchive=(D.monthArchive||[]).filter(a=>a.month!==D.activeMonth);
-    D.monthArchive.push(curArchive);
-  }
-  // Restore selected month
-  const a=D.monthArchive.find(x=>x.month===month);
-  if(!a){alert('Data nahi mila!');return;}
-  D.activeMonth=a.month;
-  D.monthLocked=false;
-  D.expenses=[...a.expenses];
-  D.partners=[...a.partners];
-  D.flats=JSON.parse(JSON.stringify(a.flats));
-  D.opening={...a.opening};
-  D.partnerOpening={...a.partnerOpening};
-  D.contractors=[...a.contractors];
-  D.monthly=[...(a.monthly||[])];
-  // Remove from archive (now active)
-  D.monthArchive=D.monthArchive.filter(x=>x.month!==month);
-  saveDB();
-  renderAll();
-  renderHistory();
-  showPage('dashboard');
-  alert('✅ '+month+' wapas active ho gaya!\nAb aap entries edit kar sakte hain.');
-}
 
 function reopenMonth(month){
   if(D.activeMonth && D.activeMonth !== month){
@@ -1660,6 +1622,245 @@ function reopenMonth(month){
   renderHistory();
   showPage('dashboard');
   alert('✅ '+month+' wapas active ho gaya!\nAb entries edit kar sakte hain.');
+}
+
+function editArchivedMonth(month){
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a){alert('Data nahi mila!');return;}
+
+  const expTotal=(a.expenses||[]).reduce((s,e)=>s+Number(e.amount||0),0);
+  const openTotal=Object.keys(CATS).reduce((s,k)=>s+Number((a.opening||{})[k]||0),0);
+  const totalExp=openTotal+expTotal;
+  const totalColl=(a.flats||[]).reduce((s,f)=>s+(f.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+
+  const detail=document.getElementById('history-detail');
+  detail.innerHTML=`
+  <div class="card" style="margin-top:16px;border-top:4px solid #1565c0;">
+    <div class="card-header" style="background:linear-gradient(135deg,#1565c0,#1976d2);">
+      <h3>✏️ Edit — ${month}</h3>
+      <button class="btn btn-sm" onclick="document.getElementById('history-detail').innerHTML=''" style="background:rgba(255,255,255,.2);color:#fff;">✕ Close</button>
+    </div>
+    <div class="card-body">
+      <div class="info-box" style="margin-bottom:16px;">
+        <b>⚠️ Dhyan rakhen:</b> Yahan sirf is month ki values edit hongi — doosre months affect nahi honge۔
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+        <div style="background:#fef0ee;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;">Opening Balance</div>
+          <div style="font-size:16px;font-weight:800;color:var(--red);">Rs. ${fmt(openTotal)}</div>
+        </div>
+        <div style="background:#fef0ee;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;">This Month Expenses</div>
+          <div style="font-size:16px;font-weight:800;color:var(--red);">Rs. ${fmt(expTotal)}</div>
+        </div>
+        <div style="background:#e6f8ee;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;">Flat Collection</div>
+          <div style="font-size:16px;font-weight:800;color:var(--green);">Rs. ${fmt(totalColl)}</div>
+        </div>
+      </div>
+
+      <div style="font-size:14px;font-weight:800;color:var(--dark);margin-bottom:10px;border-left:4px solid var(--gold);padding-left:10px;">💸 Expenses — Edit/Delete</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Date</th><th>Category</th><th>Vendor</th><th>Amount</th><th>Voucher</th><th>Actions</th></tr></thead>
+          <tbody id="arch-exp-tbody">
+            ${(a.expenses||[]).map((e,i)=>`<tr id="arch-row-${e.id}">
+              <td>${i+1}</td>
+              <td><input type="date" value="${e.date}" onchange="updateArchExp('${month}','${e.id}','date',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;font-family:'Outfit',sans-serif;"></td>
+              <td><select onchange="updateArchExp('${month}','${e.id}','category',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;font-family:'Outfit',sans-serif;">${Object.entries(CATS).map(([k,v])=>`<option value="${k}" ${e.category===k?'selected':''}>${v}</option>`).join('')}</select></td>
+              <td><input type="text" value="${e.vendor}" onchange="updateArchExp('${month}','${e.id}','vendor',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;font-family:'Outfit',sans-serif;width:150px;"></td>
+              <td><input type="number" value="${e.amount}" onchange="updateArchExp('${month}','${e.id}','amount',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;font-family:'Outfit',sans-serif;width:100px;"></td>
+              <td>${e.vno||'—'}</td>
+              <td><button class="btn btn-red btn-xs" onclick="deleteArchExp('${month}','${e.id}')">🗑 Del</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size:14px;font-weight:800;color:var(--dark);margin:16px 0 10px;border-left:4px solid #8e44ad;padding-left:10px;">👥 Partner Opening Balance — Edit</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px;" id="arch-partner-opening">
+        ${D.partnerDefs.map(p=>`<div style="background:#f8f0ff;border-radius:10px;padding:12px;border:1px solid #d7b8f0;"><div style="font-size:11px;font-weight:700;color:#8e44ad;text-transform:uppercase;margin-bottom:6px;">${p.name} (${p.share}%)</div><input type="number" value="${(a.partnerOpening||{})[p.id]||0}" onchange="updateArchPartnerOpening('${month}','${p.id}',this.value)" style="width:100%;padding:8px 10px;border:1.5px solid #d7b8f0;border-radius:8px;font-size:14px;font-weight:700;font-family:'Outfit',sans-serif;outline:none;"></div>`).join('')}
+      </div>
+
+      <div style="font-size:14px;font-weight:800;color:var(--dark);margin:16px 0 10px;border-left:4px solid var(--green);padding-left:10px;">🏠 Flat Payments — Edit</div>
+      <div class="tbl-wrap" style="margin-bottom:16px;">
+        <table>
+          <thead><tr><th>Client</th><th>Flat</th><th>Current Amount</th><th>New Amount</th></tr></thead>
+          <tbody>
+            ${(a.flats||[]).map(f=>{const total=(f.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);return `<tr><td><b>${f.name}</b></td><td>${f.flatno}</td><td class="text-green amount">Rs. ${fmt(total)}</td><td><input type="number" value="${total}" onchange="updateArchFlatPayment('${month}','${f.id}',this.value)" style="width:130px;padding:5px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;"></td></tr>`;}).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;">
+        <button class="btn btn-gold" onclick="saveArchiveEdits('${month}')">💾 Save All Changes</button>
+        <button class="btn btn-navy" onclick="document.getElementById('history-detail').innerHTML=''">✕ Close</button>
+      </div>
+    </div>
+  </div>`;
+  detail.scrollIntoView({behavior:'smooth'});
+}
+
+function updateArchPartnerOpening(month, partnerId, value){
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a) return;
+  if(!a.partnerOpening) a.partnerOpening={};
+  a.partnerOpening[partnerId]=Number(value)||0;
+}
+
+function updateArchFlatPayment(month, flatId, value){
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a) return;
+  const flat=a.flats.find(f=>f.id===flatId);
+  if(!flat) return;
+  // Update carry forward amount
+  if(flat.payments&&flat.payments.length>0){
+    flat.payments[0].amount=Number(value)||0;
+  } else {
+    flat.payments=[{amount:Number(value)||0,date:'carry-forward',mode:'Carry Forward',remarks:'Edited'}];
+  }
+}
+
+function updateArchExp(month, id, field, value){
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a) return;
+  const exp=a.expenses.find(e=>e.id===id);
+  if(!exp) return;
+  exp[field]=field==='amount'?Number(value):value;
+}
+
+function deleteArchExp(month, id){
+  if(!confirm('Is expense ko delete karein?')) return;
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a) return;
+  a.expenses=a.expenses.filter(e=>e.id!==id);
+  editArchivedMonth(month); // Refresh view
+}
+
+function saveArchiveEdits(month){
+  // Step 1: Edited month save karo
+  // Step 2: Baaki sab months chain update karo
+  cascadeMonthUpdates(month);
+
+  // Save karo
+  try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(e){}
+  try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive)); }catch(e){}
+  fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)})
+    .then(()=>showSync('✅ Saved!','#1a7a3a'))
+    .catch(()=>showSync('📱 Local only','orange'));
+  showSync('✅ All months updated!','#1a7a3a');
+  editArchivedMonth(month); // Refresh view
+  renderHistory(); // History cards update
+  alert('✅ '+month+' save ho gaya!\nSaath mein baad ke sab months bhi auto-update ho gaye!');
+}
+
+function cascadeMonthUpdates(fromMonth){
+  // Sab archived months ko date ke order mein sort karo
+  const sorted=[...D.monthArchive].sort((a,b)=>a.month.localeCompare(b.month));
+  const fromIdx=sorted.findIndex(a=>a.month===fromMonth);
+  if(fromIdx<0) return;
+
+  // fromMonth ke baad wale sab months update karo
+  for(let i=fromIdx; i<sorted.length-1; i++){
+    const cur=sorted[i];   // ye month
+    const next=sorted[i+1]; // agla month
+
+    // Next month ka opening balance = current month ka (opening + expenses)
+    const newOpening={};
+    Object.keys(CATS).forEach(k=>{
+      const openAmt=(cur.opening||{})[k]||0;
+      const expAmt=(cur.expenses||[]).filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+      newOpening[k]=openAmt+expAmt;
+    });
+    // Custom cats bhi
+    Object.keys(D.customCats||{}).forEach(k=>{
+      const openAmt=(cur.opening||{})[k]||0;
+      const expAmt=(cur.expenses||[]).filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+      newOpening[k]=openAmt+expAmt;
+    });
+
+    // Next month ka partner opening = current month ka partner opening + current month payments
+    const newPartnerOpening={};
+    D.partnerDefs.forEach(p=>{
+      const oldOpen=(cur.partnerOpening||{})[p.id]||0;
+      const newPaid=(cur.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+      newPartnerOpening[p.id]=oldOpen+newPaid;
+    });
+
+    // Next month ka flat payments = current month ka flat totals (carry forward)
+    const newFlats=(next.flats||[]).map(nf=>{
+      const curFlat=(cur.flats||[]).find(cf=>cf.id===nf.id||cf.flatno===nf.flatno);
+      if(curFlat){
+        const curTotal=(curFlat.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+        return{
+          ...nf,
+          payments:[{
+            amount:curTotal,
+            date:'carry-forward',
+            mode:'Carry Forward',
+            remarks:'Auto-updated from '+cur.month
+          }]
+        };
+      }
+      return nf;
+    });
+
+    // Apply to D.monthArchive
+    const nextIdx=D.monthArchive.findIndex(a=>a.month===next.month);
+    if(nextIdx>-1){
+      D.monthArchive[nextIdx].opening=newOpening;
+      D.monthArchive[nextIdx].partnerOpening=newPartnerOpening;
+      D.monthArchive[nextIdx].flats=newFlats;
+    }
+
+    // sorted array bhi update karo for next iteration
+    sorted[i+1].opening=newOpening;
+    sorted[i+1].partnerOpening=newPartnerOpening;
+    sorted[i+1].flats=newFlats;
+  }
+
+  // Active month bhi update karo agar last archived month ke baad hai
+  if(sorted.length>0){
+    const lastArchived=sorted[sorted.length-1];
+    // Active month ka opening update karo
+    const newOpening={};
+    Object.keys(CATS).forEach(k=>{
+      const openAmt=(lastArchived.opening||{})[k]||0;
+      const expAmt=(lastArchived.expenses||[]).filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+      newOpening[k]=openAmt+expAmt;
+    });
+    Object.keys(D.customCats||{}).forEach(k=>{
+      const openAmt=(lastArchived.opening||{})[k]||0;
+      const expAmt=(lastArchived.expenses||[]).filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+      newOpening[k]=openAmt+expAmt;
+    });
+    D.opening=newOpening;
+
+    // Partner opening update
+    D.partnerDefs.forEach(p=>{
+      const oldOpen=(lastArchived.partnerOpening||{})[p.id]||0;
+      const newPaid=(lastArchived.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+      D.partnerOpening[p.id]=oldOpen+newPaid;
+    });
+
+    // Flats update
+    D.flats=D.flats.map(f=>{
+      const lf=(lastArchived.flats||[]).find(x=>x.id===f.id||x.flatno===f.flatno);
+      if(lf){
+        const lTotal=(lf.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+        return{
+          ...f,
+          payments:[{
+            amount:lTotal,
+            date:'carry-forward',
+            mode:'Carry Forward',
+            remarks:'Auto-updated from '+lastArchived.month
+          }]
+        };
+      }
+      return f;
+    });
+  }
 }
 
 function deleteMonthArchive(month){
