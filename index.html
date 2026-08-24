@@ -1264,11 +1264,7 @@ function toggleMonthLock(){
 
 function closeMonthConfirm(){
   // Check if already closed
-  // Sirf active month check karo - agar archive mein hai to warn
-  const alreadyClosed=(D.monthArchive||[]).find(a=>a.month===D.activeMonth);
-  if(alreadyClosed){
-    if(!confirm('⚠️ '+D.activeMonth+' pehle se close ho chuka hai!\nDobara close karein? (Purana record update ho ga)')) return;
-  }
+  // Active month ko directly close karo - koi extra check nahi
   const summary=document.getElementById('close-month-summary');
   const openingTotal=totalOpening();
   const expTotal=D.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
