@@ -2409,7 +2409,7 @@ function saveMonthly(){
     // Replace nahi, update karo existing entry
     if(!confirm(month+' ka record pehle se hai.\nUpdate karein? (Data replace hoga)')) return;
     const idx=D.monthly.findIndex(m=>m.month===month);
-    D.monthly[idx]={...D.monthly[idx],exp:Number(exp)||0,recv:Number(recv)||0,remarks:document.getElementById('mc-remarks').value,details:document.getElementById('mc-details').value,updatedAt:new Date().toISOString()};
+    D.monthly[idx]={...D.monthly[idx],exp:Number(exp)||0,recv:Number(recv)||0,remarks:document.getElementById('mc-remarks').value,details:document.getElementById('mc-details').value,updatedAt:new Date().toISOString(),partnerDefs:JSON.parse(JSON.stringify(D.partnerDefs))};
     saveDB();showAlert('monthly-alert','s','✅ '+month+' closing updated!');
     clearMonthly();renderMonthly();renderReconciliation();
     return;
