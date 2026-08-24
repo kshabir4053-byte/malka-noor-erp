@@ -1264,9 +1264,10 @@ function toggleMonthLock(){
 
 function closeMonthConfirm(){
   // Check if already closed
+  // Sirf active month check karo - agar archive mein hai to warn
   const alreadyClosed=(D.monthArchive||[]).find(a=>a.month===D.activeMonth);
   if(alreadyClosed){
-    if(!confirm('⚠️ '+D.activeMonth+' pehle se close ho chuka hai!\nKya dobara close karna chahte hain? (Purana record replace ho jaye ga)')) return;
+    if(!confirm('⚠️ '+D.activeMonth+' pehle se close ho chuka hai!\nDobara close karein? (Purana record update ho ga)')) return;
   }
   const summary=document.getElementById('close-month-summary');
   const openingTotal=totalOpening();
@@ -1339,7 +1340,7 @@ function executeMonthClose(){
     }]
   }));
 
-  // Archive current month
+  // Archive current month - partnerDefs snapshot bhi save karo
   const archive={
     month:D.activeMonth,
     locked:true,
@@ -1350,7 +1351,8 @@ function executeMonthClose(){
     opening:{...D.opening},
     partnerOpening:{...D.partnerOpening},
     contractors:[...D.contractors],
-    monthly:[...D.monthly]
+    monthly:[...D.monthly],
+    partnerDefs:JSON.parse(JSON.stringify(D.partnerDefs)) // % snapshot
   };
 
   if(!D.monthArchive) D.monthArchive=[];
@@ -2417,7 +2419,7 @@ function saveMonthly(){
     return;
   }
   // Nai entry
-  const newEntry={id:'m'+Date.now(),month,exp:Number(exp)||0,recv:Number(recv)||0,remarks:document.getElementById('mc-remarks').value,details:document.getElementById('mc-details').value,createdAt:new Date().toISOString()};
+  const newEntry={id:'m'+Date.now(),month,exp:Number(exp)||0,recv:Number(recv)||0,remarks:document.getElementById('mc-remarks').value,details:document.getElementById('mc-details').value,createdAt:new Date().toISOString(),partnerDefs:JSON.parse(JSON.stringify(D.partnerDefs))};
   D.monthly.push(newEntry);
   saveDB();showAlert('monthly-alert','s','✅ '+month+' monthly closing saved!');
   sendWhatsApp('monthly', newEntry);
@@ -2440,12 +2442,14 @@ function renderMonthly(){
   D.partnerDefs.forEach(p=>partnerTotals[p.id]=0);
 
   document.getElementById('monthly-tbody').innerHTML=sorted.length?sorted.map((m,i)=>{
-    // Sirf expenses partners mein divide honge - flat collection alag track
     const exp=Number(m.exp||0);
     const recv=Number(m.recv||0);
     totExp+=exp;totRecv+=recv;
-    const partnerCols=D.partnerDefs.map(p=>{
+    // Us month ka apna partnerDefs use karo - % change purane months affect na kare
+    const monthPartners=m.partnerDefs||D.partnerDefs;
+    const partnerCols=monthPartners.map(p=>{
       const share=exp*(p.share/100);
+      if(!partnerTotals[p.id]) partnerTotals[p.id]=0;
       partnerTotals[p.id]+=share;
       return`<td class="amount text-red">Rs. ${fmt(share)}</td>`;
     }).join('');
@@ -2632,14 +2636,22 @@ function savePartners(){
     return{id:document.getElementById('pm-id-'+i)?.value||'p'+i,name:document.getElementById('pm-name-'+i)?.value||'Partner '+(i+1),share};
   });
   if(total!==100){alert('Total share 100% honi chahiye! Abhi '+total+'% hai.');return;}
+
+  // IMPORTANT: Purane months (archive) ka partnerDefs change NA ho
+  // Sirf active month aur aage ke liye naye % apply hon
+  // Archive mein har month ka apna partnerDefs snapshot save karo
   D.partnerDefs=newDefs;
+
+  // Active month ka snapshot save karo
+  D.activePartnerDefs={...{},...Object.fromEntries(newDefs.map(p=>[p.id,p.share]))};
+
   saveDB();
   closeManagePartnersModal();
   buildPartnerDropdowns();
   renderPartnerCards();
   renderMonthly();
   renderDashboard();
-  alert('✅ Partners saved!');
+  alert('✅ Partners saved!\n\nNote: Purane closed months ke % change nahi hue — sirf aaj se aage ke months mein naye % apply honge.');
 }
 
 // ===== RECONCILIATION =====
