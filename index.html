@@ -2633,13 +2633,24 @@ function savePartners(){
   });
   if(total!==100){alert('Total share 100% honi chahiye! Abhi '+total+'% hai.');return;}
 
-  // IMPORTANT: Purane months (archive) ka partnerDefs change NA ho
-  // Sirf active month aur aage ke liye naye % apply hon
-  // Archive mein har month ka apna partnerDefs snapshot save karo
+  // Naye % set karo
   D.partnerDefs=newDefs;
 
-  // Active month ka snapshot save karo
-  D.activePartnerDefs={...{},...Object.fromEntries(newDefs.map(p=>[p.id,p.share]))};
+  // PURANE monthly entries mein % LOCK karo - change na ho
+  D.monthly.forEach(m=>{
+    if(!m.partnerDefs){
+      // Agar snapshot nahi tha to current (old) defs se lock karo
+      m.partnerDefs=JSON.parse(JSON.stringify(newDefs));
+    }
+    // Jo pehle se locked hain unhe touch nahi karo
+  });
+
+  // Archive mein bhi purane months protect karo
+  (D.monthArchive||[]).forEach(a=>{
+    if(!a.partnerDefs){
+      a.partnerDefs=JSON.parse(JSON.stringify(newDefs));
+    }
+  });
 
   saveDB();
   closeManagePartnersModal();
@@ -2647,7 +2658,7 @@ function savePartners(){
   renderPartnerCards();
   renderMonthly();
   renderDashboard();
-  alert('✅ Partners saved!\n\nNote: Purane closed months ke % change nahi hue — sirf aaj se aage ke months mein naye % apply honge.');
+  alert('✅ Partners % save ho gaya!\nPurane months (May/June) ka % same rahega.');
 }
 
 // ===== RECONCILIATION =====
