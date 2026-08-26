@@ -1888,9 +1888,10 @@ function viewMonthDetail(month){
     const coll=f.payments.reduce((s,p)=>s+Number(p.amount||0),0);
     return '<tr><td>'+(i+1)+'</td><td>'+f.name+'</td><td>'+f.flatno+'</td><td class="text-green amount">Rs. '+fmt(coll)+'</td><td class="'+(Number(f.saleValue)-coll>0?'text-red':'text-green')+' amount">Rs. '+fmt(Number(f.saleValue)-coll)+'</td></tr>';
   }).join('');
-  const partnerRows=D.partnerDefs.map(p=>{
+  const viewPartners=a.partnerDefs||D.partnerDefs;
+  const partnerRows=viewPartners.map(p=>{
     const due=net*(p.share/100);
-    const paid=(D.partnerOpening[p.id]||0)+(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+    const paid=(a.partnerOpening[p.id]||0)+(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
     return '<tr><td><b>'+p.name+'</b></td><td>'+p.share+'%</td><td class="amount text-gold">Rs. '+fmt(due)+'</td><td class="amount text-green">Rs. '+fmt(paid)+'</td><td class="amount '+(due-paid>0?'text-red':'text-green')+'">Rs. '+fmt(Math.abs(due-paid))+'</td></tr>';
   }).join('');
 
@@ -1916,7 +1917,7 @@ function viewMonthDetail(month){
     '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #dde6f0;font-size:13px;"><span>Flat Collection</span><span style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(totalColl)+'</span></div>'+
     '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:15px;font-weight:800;border-top:2px solid #0f1f3d;margin-top:4px;"><span>Net Balance → Partners mein taqseem</span><span>Rs. '+fmt(net)+'</span></div>'+
     '<div style="margin-top:12px;">'+
-    D.partnerDefs.map(p=>{
+    viewPartners.map(p=>{
       const due=net*(p.share/100);
       const op=a.partnerOpening[p.id]||0;
       const np=(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
@@ -1949,7 +1950,8 @@ function printMonthArchive(month){
     const rem=Number(f.saleValue)-coll;
     return '<tr><td>'+(i+1)+'</td><td>'+f.name+'</td><td>'+f.flatno+'</td><td>'+f.floor+'</td><td>'+f.type+'</td><td style="font-weight:700;">Rs. '+fmt(f.saleValue)+'</td><td style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(coll)+'</td><td style="font-weight:700;color:'+(rem>0?'#c0392b':'#1a7a3a')+';">Rs. '+fmt(rem)+'</td></tr>';
   }).join('');
-  const partnerRows=D.partnerDefs.map(p=>{
+  const printPartners=a.partnerDefs||D.partnerDefs;
+  const partnerRows=printPartners.map(p=>{
     const due=net*(p.share/100);
     const openPaid=a.partnerOpening[p.id]||0;
     const newPaid=(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
