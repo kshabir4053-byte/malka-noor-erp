@@ -1583,23 +1583,38 @@ function renderHistory(){
 function reopenMonth(month){
   if(D.activeMonth && D.activeMonth !== month){
     if(!confirm('⚠️ Abhi '+D.activeMonth+' active hai.\n'+month+' reopen karne se current month ka data archive ho jaye ga. Pakka?')) return;
+    // Current active month ko properly archive karo - partnerDefs bhi save karo
     const curArchive={
-      month:D.activeMonth,locked:false,closedAt:new Date().toISOString(),
-      expenses:[...D.expenses],partners:[...D.partners],
+      month:D.activeMonth,locked:false,
+      closedAt:D.activeMonth+'-01T00:00:00.000Z',
+      expenses:JSON.parse(JSON.stringify(D.expenses)),
+      partners:JSON.parse(JSON.stringify(D.partners)),
       flats:JSON.parse(JSON.stringify(D.flats)),
-      opening:{...D.opening},partnerOpening:{...D.partnerOpening},
-      contractors:[...D.contractors],monthly:[...D.monthly]
+      opening:JSON.parse(JSON.stringify(D.opening)),
+      partnerOpening:JSON.parse(JSON.stringify(D.partnerOpening)),
+      contractors:JSON.parse(JSON.stringify(D.contractors)),
+      monthly:JSON.parse(JSON.stringify(D.monthly)),
+      partnerDefs:JSON.parse(JSON.stringify(D.partnerDefs))
     };
     D.monthArchive=(D.monthArchive||[]).filter(a=>a.month!==D.activeMonth);
     D.monthArchive.push(curArchive);
   }
   const a=D.monthArchive.find(x=>x.month===month);
   if(!a){alert('Data nahi mila!');return;}
-  D.activeMonth=a.month;D.monthLocked=false;
-  D.expenses=[...a.expenses];D.partners=[...a.partners];
-  D.flats=JSON.parse(JSON.stringify(a.flats));
-  D.opening={...a.opening};D.partnerOpening={...a.partnerOpening};
-  D.contractors=[...a.contractors];D.monthly=[...(a.monthly||[])];
+
+  // Reopen - archive ka data wapas active mein lao - deep copy
+  D.activeMonth=a.month;
+  D.monthLocked=false;
+  D.expenses=JSON.parse(JSON.stringify(a.expenses||[]));
+  D.partners=JSON.parse(JSON.stringify(a.partners||[]));
+  D.flats=JSON.parse(JSON.stringify(a.flats||[]));
+  D.opening=JSON.parse(JSON.stringify(a.opening||{}));
+  D.partnerOpening=JSON.parse(JSON.stringify(a.partnerOpening||{}));
+  D.contractors=JSON.parse(JSON.stringify(a.contractors||[]));
+  D.monthly=JSON.parse(JSON.stringify(a.monthly||[]));
+  // partnerDefs bhi restore karo
+  if(a.partnerDefs) D.partnerDefs=JSON.parse(JSON.stringify(a.partnerDefs));
+
   D.monthArchive=D.monthArchive.filter(x=>x.month!==month);
   // Save without Firebase reload
   try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(e){}
