@@ -866,7 +866,8 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
       <div id="close-month-summary" style="margin-bottom:16px;"></div>
       <div class="form-group" style="margin-bottom:16px;">
         <label>Next Month</label>
-        <input type="month" id="next-month-input" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;width:100%;">
+        <input type="month" id="next-month-input" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;width:100%;" readonly title="Next month automatically calculate hota hai">
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;">⚠️ Next month auto-calculated hai — change nahi hoga</div>
       </div>
       <div class="btn-row">
         <button class="btn btn-green" onclick="executeMonthClose()">✅ Confirm — Month Close Karo</button>
@@ -1308,11 +1309,14 @@ function closeMonthConfirm(){
 function executeMonthClose(){
   const nextMonth=document.getElementById('next-month-input').value;
   if(!nextMonth){alert('Next month select karein!');return;}
-  if(!confirm('Pakka? '+D.activeMonth+' close ho jaye ga aur '+nextMonth+' shuru hoga.')) return;
+  // IMPORTANT: nextMonth user ne change kiya ho sakta hai - sirf validate karo
+  // Archive month HAMESHA D.activeMonth hoga - nextMonth sirf next active month hai
+  const closingMonth = D.activeMonth; // Ye fix hai - user change nahi kar sakta
+  if(!confirm('Pakka? '+closingMonth+' close ho jaye ga aur '+nextMonth+' shuru hoga.')) return;
 
   // AUTO BACKUP - close se pehle
   try{
-    const backupKey='mnr3_backup_'+D.activeMonth;
+    const backupKey='mnr3_backup_'+closingMonth;
     localStorage.setItem(backupKey, JSON.stringify(D));
     localStorage.setItem('mnr3_last_backup', backupKey);
     console.log('✅ Backup saved:', backupKey);
@@ -1344,11 +1348,11 @@ function executeMonthClose(){
     }]
   }));
 
-  // Archive current month - partnerDefs snapshot bhi save karo
+  // Archive current month - HAMESHA D.activeMonth close hoga
   const archive={
-    month:D.activeMonth,
+    month:closingMonth,
     locked:true,
-    closedAt:D.activeMonth+'-01T00:00:00.000Z',
+    closedAt:closingMonth+'-01T00:00:00.000Z',
     expenses:[...D.expenses],
     partners:[...D.partners],
     flats:JSON.parse(JSON.stringify(D.flats)),
@@ -1361,7 +1365,7 @@ function executeMonthClose(){
 
   if(!D.monthArchive) D.monthArchive=[];
   // Replace if same month already archived
-  D.monthArchive=D.monthArchive.filter(a=>a.month!==D.activeMonth);
+  D.monthArchive=D.monthArchive.filter(a=>a.month!==closingMonth);
   D.monthArchive.push(archive);
 
   // Start fresh month
@@ -1394,7 +1398,7 @@ function executeMonthClose(){
   buildPartnerDropdowns();
   renderReconciliation();
   showPage('history');
-  alert('✅ '+archive.month+' close ho gaya!\n➡️ '+nextMonth+' shuru ho gaya!');
+  alert('✅ '+closingMonth+' close ho gaya!\n➡️ '+nextMonth+' shuru ho gaya!');
 }
 
 // ===== CATEGORY LEDGER =====
