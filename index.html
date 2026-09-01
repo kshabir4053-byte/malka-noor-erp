@@ -1323,8 +1323,13 @@ function executeMonthClose(){
   }catch(e){ console.error('Backup failed:', e); }
 
   // Calculate category totals for carry forward
+  // Opening + Is month ki expenses = Next month ka opening
   const catTotals={};
   Object.keys(CATS).forEach(k=>{
+    catTotals[k]=(D.opening[k]||0)+D.expenses.filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+  });
+  // Custom cats bhi
+  Object.keys(D.customCats||{}).forEach(k=>{
     catTotals[k]=(D.opening[k]||0)+D.expenses.filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
   });
 
