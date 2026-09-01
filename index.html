@@ -1310,6 +1310,14 @@ function executeMonthClose(){
   if(!nextMonth){alert('Next month select karein!');return;}
   if(!confirm('Pakka? '+D.activeMonth+' close ho jaye ga aur '+nextMonth+' shuru hoga.')) return;
 
+  // AUTO BACKUP - close se pehle
+  try{
+    const backupKey='mnr3_backup_'+D.activeMonth;
+    localStorage.setItem(backupKey, JSON.stringify(D));
+    localStorage.setItem('mnr3_last_backup', backupKey);
+    console.log('✅ Backup saved:', backupKey);
+  }catch(e){ console.error('Backup failed:', e); }
+
   // Calculate category totals for carry forward
   const catTotals={};
   Object.keys(CATS).forEach(k=>{
