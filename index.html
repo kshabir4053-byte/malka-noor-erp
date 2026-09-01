@@ -2472,8 +2472,9 @@ function renderMonthly(){
     totExp+=exp;totRecv+=recv;
     // Us month ka apna partnerDefs use karo - % change purane months affect na kare
     const monthPartners=m.partnerDefs||D.partnerDefs;
+    const net=exp-recv; // Net = Expenses - Flat Collection
     const partnerCols=monthPartners.map(p=>{
-      const share=exp*(p.share/100);
+      const share=net*(p.share/100); // Share net se nikle
       if(!partnerTotals[p.id]) partnerTotals[p.id]=0;
       partnerTotals[p.id]+=share;
       return`<td class="amount text-red">Rs. ${fmt(share)}</td>`;
