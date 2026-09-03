@@ -1111,6 +1111,28 @@ async function saveDB(){
   }catch(e){ showSync('📱 Local save only','orange'); }
 }
 
+function autoFixJune2026Opening(){
+  try{
+    if(D._fixJun2026Applied) return; // already fixed, don't run again
+    const a=(D.monthArchive||[]).find(x=>x.month==='2026-06');
+    if(a && a.opening){
+      let changed=false;
+      if(Math.round(a.opening.salary||0)===22617193){ a.opening.salary=20797727; changed=true; }
+      if(Math.round(a.opening.labour||0)===119520187){ a.opening.labour=119518687; changed=true; }
+      if(Math.round(a.opening.hardware||0)===2970694){ a.opening.hardware=2968294; changed=true; }
+      if(changed){
+        cascadeMonthUpdates('2026-06');
+        D._fixJun2026Applied=true;
+        try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(e){}
+        try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive)); }catch(e){}
+        fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)}).catch(()=>{});
+      } else {
+        D._fixJun2026Applied=true; // numbers didn't match expected — mark checked, don't loop
+      }
+    }
+  }catch(e){}
+}
+
 async function loadAll(){
   // LocalStorage HAMESHA priority - delete/changes yahan safe hain
   const local=localStorage.getItem('mnr3_data');
@@ -1126,6 +1148,7 @@ async function loadAll(){
         if(localArchive){ try{D.monthArchive=JSON.parse(localArchive);}catch(x){} }
         if(localActiveMonth) D.activeMonth=localActiveMonth;
         showSync('📱 Data loaded!','#1a7a3a');
+        autoFixJune2026Opening();
         renderAll();
         // Background mein Firebase sync karo (sirf save, load nahi)
         syncToFirebase();
@@ -1145,6 +1168,7 @@ async function loadAll(){
       localStorage.setItem('mnr3_data',JSON.stringify(D));
       localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive||[]));
       showSync('☁️ Cloud data loaded!','#1a7a3a');
+      autoFixJune2026Opening();
       renderAll();
       return;
     }
@@ -1691,6 +1715,11 @@ function editArchivedMonth(month){
         </div>
       </div>
 
+      <div style="font-size:14px;font-weight:800;color:var(--dark);margin:16px 0 10px;border-left:4px solid #c0392b;padding-left:10px;">🏦 Opening Balance — Category-wise Edit (is month ki shuruaat)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:20px;">
+        ${Object.entries(CATS).map(([k,v])=>`<div style="background:#fff5f5;border-radius:10px;padding:10px;border:1px solid #f0c4c4;"><div style="font-size:11px;font-weight:700;color:#c0392b;margin-bottom:6px;">${v}</div><input type="number" value="${(a.opening||{})[k]||0}" onchange="updateArchOpening('${month}','${k}',this.value)" style="width:100%;padding:7px 9px;border:1.5px solid #f0c4c4;border-radius:7px;font-size:13px;font-weight:700;font-family:'Outfit',sans-serif;outline:none;"></div>`).join('')}
+      </div>
+
       <div style="font-size:14px;font-weight:800;color:var(--dark);margin-bottom:10px;border-left:4px solid var(--gold);padding-left:10px;">💸 Expenses — Edit/Delete</div>
       <div class="tbl-wrap">
         <table>
@@ -1730,6 +1759,13 @@ function editArchivedMonth(month){
     </div>
   </div>`;
   detail.scrollIntoView({behavior:'smooth'});
+}
+
+function updateArchOpening(month, catKey, value){
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a) return;
+  if(!a.opening) a.opening={};
+  a.opening[catKey]=Number(value)||0;
 }
 
 function updateArchPartnerOpening(month, partnerId, value){
