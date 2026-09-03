@@ -250,7 +250,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
       <div style="font-weight:800;">Sohail Ahmed</div>
       <div>CEO &nbsp;|&nbsp; 0321-2447324</div>
     </div>
-    <div id="active-month-badge" style="background:rgba(184,148,63,.2);border:1px solid var(--gold);border-radius:8px;padding:4px 12px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;" onclick="showPage('history')">📅 <span id="active-month-label">Loading...</span></div>
+    <div id="active-month-badge" style="background:#e67e22;border:2px solid #fff;border-radius:8px;padding:6px 16px;font-size:14px;font-weight:900;color:#fff;cursor:pointer;" onclick="showPage('history')" title="Ye month currently ACTIVE hai - naye entries yahan ja rahi hain">✏️ AB KAAM HO RAHA HAI: <span id="active-month-label">Loading...</span></div>
     <button class="btn btn-sm no-print" id="lock-btn" onclick="toggleMonthLock()" style="background:#e67e22;color:#fff;font-size:11px;">🔒 Lock</button>
     <button class="btn btn-green btn-sm no-print" onclick="closeMonthConfirm()" style="font-size:11px;">✅ Close Month</button>
     <button class="btn btn-gold btn-sm" onclick="openSettingsModal()">⚙️ Settings</button>
@@ -1599,7 +1599,8 @@ function renderHistory(){
 
 function reopenMonth(month){
   if(D.activeMonth && D.activeMonth !== month){
-    if(!confirm('⚠️ Abhi '+D.activeMonth+' active hai.\n'+month+' reopen karne se current month ka data archive ho jaye ga. Pakka?')) return;
+    const typed=prompt('⚠️ KHATARNAK ACTION!\n\nAbhi "'+D.activeMonth+'" ACTIVE hai — naye entries usi mein ja rahi hain.\n\n"'+month+'" ko reopen karne se:\n1) "'+D.activeMonth+'" band ho kar ARCHIVE mein chala jayega\n2) "'+month+'" wapas ACTIVE ban jayega — ab naye entries "'+month+'" mein jayengi, "'+D.activeMonth+'" mein NAHI!\n\nAgar aap sirf "'+month+'" ka purana data DEKHNA/THEEK karna chahte hain (naya kaam nahi karna), to iski jagah "✏️ Edit" button use karein — Reopen nahi.\n\nConfirm karne ke liye neeche box mein "'+month+'" likhein:');
+    if(typed!==month){ alert('❌ Cancel ho gaya — month name match nahi hua.'); return; }
     // Current active month ko properly archive karo - partnerDefs bhi save karo
     const curArchive={
       month:D.activeMonth,locked:false,
