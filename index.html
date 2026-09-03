@@ -1113,23 +1113,30 @@ async function saveDB(){
 
 function autoFixJune2026Opening(){
   try{
-    if(D._fixJun2026Applied) return; // already fixed, don't run again
-    const a=(D.monthArchive||[]).find(x=>x.month==='2026-06');
-    if(a && a.opening){
-      let changed=false;
-      if(Math.round(a.opening.salary||0)===22617193){ a.opening.salary=20797727; changed=true; }
-      if(Math.round(a.opening.labour||0)===119520187){ a.opening.labour=119518687; changed=true; }
-      if(Math.round(a.opening.hardware||0)===2970694){ a.opening.hardware=2968294; changed=true; }
-      if(changed){
-        cascadeMonthUpdates('2026-06');
-        D._fixJun2026Applied=true;
-        try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(e){}
-        try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive)); }catch(e){}
-        fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)}).catch(()=>{});
-      } else {
-        D._fixJun2026Applied=true; // numbers didn't match expected — mark checked, don't loop
-      }
+    if(D._fixChainV2Applied) return; // already fixed, don't run again
+
+    // Step 1: May se aage jitne bhi archived months hain, sab ka opening
+    // May ke (opening+expenses) se dobara sahi calculate karo (cascade)
+    if((D.monthArchive||[]).find(x=>x.month==='2026-05')){
+      cascadeMonthUpdates('2026-05');
     }
+
+    // Step 2: Agar abhi ka ACTIVE month archived nahi hai (live hai),
+    // to us ka opening bhi pichle (sabse aakhri archived) month se sahi karo
+    const sorted=[...(D.monthArchive||[])].sort((a,b)=>a.month.localeCompare(b.month));
+    const last=sorted[sorted.length-1];
+    if(last && D.activeMonth && D.activeMonth>last.month){
+      const expByCat={};
+      (last.expenses||[]).forEach(e=>{expByCat[e.category]=(expByCat[e.category]||0)+Number(e.amount||0);});
+      Object.keys(CATS).forEach(k=>{
+        D.opening[k]=(last.opening&&last.opening[k]||0)+(expByCat[k]||0);
+      });
+    }
+
+    D._fixChainV2Applied=true;
+    try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(e){}
+    try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive)); }catch(e){}
+    fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)}).catch(()=>{});
   }catch(e){}
 }
 
