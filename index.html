@@ -256,6 +256,8 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
     <button class="btn btn-gold btn-sm" onclick="openSettingsModal()">⚙️ Settings</button>
     <button class="btn btn-navy btn-sm" onclick="syncNow()">🔄 Sync</button>
     <button class="btn btn-sm no-print" onclick="downloadBackup()" style="background:#1a7a3a;color:#fff;font-size:11px;">📥 Backup Download</button>
+    <input type="file" id="restoreFileInput" accept=".json" style="display:none;" onchange="restoreBackup(this.files[0])">
+    <button class="btn btn-sm no-print" onclick="document.getElementById('restoreFileInput').click()" style="background:#c0392b;color:#fff;font-size:11px;">📤 Restore Backup</button>
   </div>
 </div>
 
@@ -1110,6 +1112,27 @@ async function saveDB(){
     if(r.ok) showSync('✅ Saved!','#1a7a3a');
     else showSync('⚠️ Cloud fail — Local OK','orange');
   }catch(e){ showSync('📱 Local save only','orange'); }
+}
+
+function restoreBackup(file){
+  if(!file) return;
+  if(!confirm('⚠️ Ye is waqt ka SAARA data replace kar dega us file ke data se.\n\nPakka aage badhna hai?')) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const parsed = JSON.parse(e.target.result);
+      D = parsed;
+      refreshCats();
+      try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(err){}
+      try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive||[])); }catch(err){}
+      fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)})
+        .then(()=>{ alert('✅ Restore ho gaya aur Firebase par bhi save ho gaya!'); renderAll(); updateMonthBadge(); })
+        .catch(()=>{ alert('⚠️ Local restore ho gaya lekin Firebase save fail hua — Sync button dabayein.'); renderAll(); updateMonthBadge(); });
+    }catch(err){
+      alert('❌ File padhne mein masla — sahi .json backup file select karein.');
+    }
+  };
+  reader.readAsText(file);
 }
 
 function downloadBackup(){
