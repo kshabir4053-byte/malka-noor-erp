@@ -1153,6 +1153,7 @@ function restoreBackup(file){
       refreshCats();
       try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(err){}
       try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive||[])); }catch(err){}
+      try{ localStorage.setItem('mnr3_activeMonth',D.activeMonth||''); }catch(err){}
       fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)})
         .then(()=>{ alert('✅ Restore ho gaya aur Firebase par bhi save ho gaya!'); renderAll(); updateMonthBadge(); })
         .catch(()=>{ alert('⚠️ Local restore ho gaya lekin Firebase save fail hua — Sync button dabayein.'); renderAll(); updateMonthBadge(); });
