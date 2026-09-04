@@ -258,6 +258,8 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
     <button class="btn btn-sm no-print" onclick="downloadBackup()" style="background:#1a7a3a;color:#fff;font-size:11px;">📥 Backup Download</button>
     <input type="file" id="restoreFileInput" accept=".json" style="display:none;" onchange="restoreBackup(this.files[0])">
     <button class="btn btn-sm no-print" onclick="document.getElementById('restoreFileInput').click()" style="background:#c0392b;color:#fff;font-size:11px;">📤 Restore Backup</button>
+    <input type="file" id="importExpFileInput" accept=".json" style="display:none;" onchange="importExpenses(this.files[0])">
+    <button class="btn btn-sm no-print" onclick="document.getElementById('importExpFileInput').click()" style="background:#8e44ad;color:#fff;font-size:11px;">➕ Import Expenses</button>
   </div>
 </div>
 
@@ -1112,6 +1114,32 @@ async function saveDB(){
     if(r.ok) showSync('✅ Saved!','#1a7a3a');
     else showSync('⚠️ Cloud fail — Local OK','orange');
   }catch(e){ showSync('📱 Local save only','orange'); }
+}
+
+function importExpenses(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const list = JSON.parse(e.target.result);
+      if(!Array.isArray(list)){ alert('❌ File mein expenses ki list (array) honi chahiye.'); return; }
+      if(!confirm('⚠️ '+list.length+' expenses is-mahine (ACTIVE month: '+D.activeMonth+') mein add ho jayengi. Pakka?')) return;
+      list.forEach(exp=>{
+        D.expenses.push({
+          id: exp.id || ('e'+Date.now()+Math.floor(Math.random()*10000)),
+          category: exp.category, date: exp.date, vendor: exp.vendor,
+          amount: exp.amount, vno: exp.vno||'', mode: exp.mode||'Cash',
+          remarks: exp.remarks||'', createdAt: exp.createdAt || new Date().toISOString()
+        });
+      });
+      saveDB();
+      alert('✅ '+list.length+' expenses import ho gayi!');
+      renderAll();
+    }catch(err){
+      alert('❌ File padhne mein masla — sahi .json file select karein.');
+    }
+  };
+  reader.readAsText(file);
 }
 
 function restoreBackup(file){
