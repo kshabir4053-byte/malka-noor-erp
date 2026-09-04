@@ -2123,7 +2123,7 @@ function printMonthArchive(month){
   '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:800;border-top:2px solid #0f1f3d;margin-top:4px;"><span>Net Balance (Distributed to Partners)</span><span>Rs. '+fmt(net)+'</span></div>'+
   '</div>'+
   '<table style="margin-bottom:20px;"><thead><tr><th>Partner</th><th>Share%</th><th>Net Balance</th><th>Due Amount</th><th>Total Paid</th><th>Remaining</th><th>Status</th></tr></thead><tbody>'+
-  D.partnerDefs.map(p=>{
+  printPartners.map(p=>{
     const due=net*(p.share/100);
     const openPaid=a.partnerOpening[p.id]||0;
     const newPaid=(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
