@@ -250,16 +250,11 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
       <div style="font-weight:800;">Sohail Ahmed</div>
       <div>CEO &nbsp;|&nbsp; 0321-2447324</div>
     </div>
-    <div id="active-month-badge" style="background:#e67e22;border:2px solid #fff;border-radius:8px;padding:6px 16px;font-size:14px;font-weight:900;color:#fff;cursor:pointer;" onclick="showPage('history')" title="Ye month currently ACTIVE hai - naye entries yahan ja rahi hain">✏️ AB KAAM HO RAHA HAI: <span id="active-month-label">Loading...</span></div>
+    <div id="active-month-badge" style="background:rgba(184,148,63,.2);border:1px solid var(--gold);border-radius:8px;padding:4px 12px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;" onclick="showPage('history')">📅 <span id="active-month-label">Loading...</span></div>
     <button class="btn btn-sm no-print" id="lock-btn" onclick="toggleMonthLock()" style="background:#e67e22;color:#fff;font-size:11px;">🔒 Lock</button>
     <button class="btn btn-green btn-sm no-print" onclick="closeMonthConfirm()" style="font-size:11px;">✅ Close Month</button>
     <button class="btn btn-gold btn-sm" onclick="openSettingsModal()">⚙️ Settings</button>
     <button class="btn btn-navy btn-sm" onclick="syncNow()">🔄 Sync</button>
-    <button class="btn btn-sm no-print" onclick="downloadBackup()" style="background:#1a7a3a;color:#fff;font-size:11px;">📥 Backup Download</button>
-    <input type="file" id="restoreFileInput" accept=".json" style="display:none;" onchange="restoreBackup(this.files[0])">
-    <button class="btn btn-sm no-print" onclick="document.getElementById('restoreFileInput').click()" style="background:#c0392b;color:#fff;font-size:11px;">📤 Restore Backup</button>
-    <input type="file" id="importExpFileInput" accept=".json" style="display:none;" onchange="importExpenses(this.files[0])">
-    <button class="btn btn-sm no-print" onclick="document.getElementById('importExpFileInput').click()" style="background:#8e44ad;color:#fff;font-size:11px;">➕ Import Expenses</button>
   </div>
 </div>
 
@@ -1116,74 +1111,6 @@ async function saveDB(){
   }catch(e){ showSync('📱 Local save only','orange'); }
 }
 
-function importExpenses(file){
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    try{
-      const list = JSON.parse(e.target.result);
-      if(!Array.isArray(list)){ alert('❌ File mein expenses ki list (array) honi chahiye.'); return; }
-      if(!confirm('⚠️ '+list.length+' expenses is-mahine (ACTIVE month: '+D.activeMonth+') mein add ho jayengi. Pakka?')) return;
-      list.forEach(exp=>{
-        D.expenses.push({
-          id: exp.id || ('e'+Date.now()+Math.floor(Math.random()*10000)),
-          category: exp.category, date: exp.date, vendor: exp.vendor,
-          amount: exp.amount, vno: exp.vno||'', mode: exp.mode||'Cash',
-          remarks: exp.remarks||'', createdAt: exp.createdAt || new Date().toISOString()
-        });
-      });
-      saveDB();
-      alert('✅ '+list.length+' expenses import ho gayi!');
-      renderAll();
-    }catch(err){
-      alert('❌ File padhne mein masla — sahi .json file select karein.');
-    }
-  };
-  reader.readAsText(file);
-}
-
-function restoreBackup(file){
-  if(!file) return;
-  if(!confirm('⚠️ Ye is waqt ka SAARA data replace kar dega us file ke data se.\n\nPakka aage badhna hai?')) return;
-  const reader = new FileReader();
-  reader.onload = function(e){
-    try{
-      const parsed = JSON.parse(e.target.result);
-      D = parsed;
-      refreshCats();
-      try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(err){}
-      try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive||[])); }catch(err){}
-      try{ localStorage.setItem('mnr3_activeMonth',D.activeMonth||''); }catch(err){}
-      fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)})
-        .then(()=>{ alert('✅ Restore ho gaya aur Firebase par bhi save ho gaya!'); renderAll(); updateMonthBadge(); })
-        .catch(()=>{ alert('⚠️ Local restore ho gaya lekin Firebase save fail hua — Sync button dabayein.'); renderAll(); updateMonthBadge(); });
-    }catch(err){
-      alert('❌ File padhne mein masla — sahi .json backup file select karein.');
-    }
-  };
-  reader.readAsText(file);
-}
-
-function downloadBackup(){
-  const dataStr = JSON.stringify(D, null, 2);
-  const blob = new Blob([dataStr], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-  a.href = url;
-  a.download = 'ERP_Backup_'+ts+'.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  alert('✅ Backup download ho gaya! File Downloads folder mein milegi.');
-}
-
-function autoFixJune2026Opening(){
-  // Auto Firebase overwrite hata diya gaya - ab kuch nahi karta, safe hai
-  return;
-}
-
 async function loadAll(){
   // LocalStorage HAMESHA priority - delete/changes yahan safe hain
   const local=localStorage.getItem('mnr3_data');
@@ -1199,7 +1126,6 @@ async function loadAll(){
         if(localArchive){ try{D.monthArchive=JSON.parse(localArchive);}catch(x){} }
         if(localActiveMonth) D.activeMonth=localActiveMonth;
         showSync('📱 Data loaded!','#1a7a3a');
-        autoFixJune2026Opening();
         renderAll();
         // Background mein Firebase sync karo (sirf save, load nahi)
         syncToFirebase();
@@ -1219,7 +1145,6 @@ async function loadAll(){
       localStorage.setItem('mnr3_data',JSON.stringify(D));
       localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive||[]));
       showSync('☁️ Cloud data loaded!','#1a7a3a');
-      autoFixJune2026Opening();
       renderAll();
       return;
     }
@@ -1674,8 +1599,7 @@ function renderHistory(){
 
 function reopenMonth(month){
   if(D.activeMonth && D.activeMonth !== month){
-    const typed=prompt('⚠️ KHATARNAK ACTION!\n\nAbhi "'+D.activeMonth+'" ACTIVE hai — naye entries usi mein ja rahi hain.\n\n"'+month+'" ko reopen karne se:\n1) "'+D.activeMonth+'" band ho kar ARCHIVE mein chala jayega\n2) "'+month+'" wapas ACTIVE ban jayega — ab naye entries "'+month+'" mein jayengi, "'+D.activeMonth+'" mein NAHI!\n\nAgar aap sirf "'+month+'" ka purana data DEKHNA/THEEK karna chahte hain (naya kaam nahi karna), to iski jagah "✏️ Edit" button use karein — Reopen nahi.\n\nConfirm karne ke liye neeche box mein "'+month+'" likhein:');
-    if(typed!==month){ alert('❌ Cancel ho gaya — month name match nahi hua.'); return; }
+    if(!confirm('⚠️ Abhi '+D.activeMonth+' active hai.\n'+month+' reopen karne se current month ka data archive ho jaye ga. Pakka?')) return;
     // Current active month ko properly archive karo - partnerDefs bhi save karo
     const curArchive={
       month:D.activeMonth,locked:false,
@@ -1766,11 +1690,6 @@ function editArchivedMonth(month){
         </div>
       </div>
 
-      <div style="font-size:14px;font-weight:800;color:var(--dark);margin:16px 0 10px;border-left:4px solid #c0392b;padding-left:10px;">🏦 Opening Balance — Category-wise Edit (is month ki shuruaat)</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:20px;">
-        ${Object.entries(CATS).map(([k,v])=>`<div style="background:#fff5f5;border-radius:10px;padding:10px;border:1px solid #f0c4c4;"><div style="font-size:11px;font-weight:700;color:#c0392b;margin-bottom:6px;">${v}</div><input type="number" value="${(a.opening||{})[k]||0}" onchange="updateArchOpening('${month}','${k}',this.value)" style="width:100%;padding:7px 9px;border:1.5px solid #f0c4c4;border-radius:7px;font-size:13px;font-weight:700;font-family:'Outfit',sans-serif;outline:none;"></div>`).join('')}
-      </div>
-
       <div style="font-size:14px;font-weight:800;color:var(--dark);margin-bottom:10px;border-left:4px solid var(--gold);padding-left:10px;">💸 Expenses — Edit/Delete</div>
       <div class="tbl-wrap">
         <table>
@@ -1810,13 +1729,6 @@ function editArchivedMonth(month){
     </div>
   </div>`;
   detail.scrollIntoView({behavior:'smooth'});
-}
-
-function updateArchOpening(month, catKey, value){
-  const a=D.monthArchive.find(x=>x.month===month);
-  if(!a) return;
-  if(!a.opening) a.opening={};
-  a.opening[catKey]=Number(value)||0;
 }
 
 function updateArchPartnerOpening(month, partnerId, value){
@@ -2123,7 +2035,7 @@ function printMonthArchive(month){
   '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:800;border-top:2px solid #0f1f3d;margin-top:4px;"><span>Net Balance (Distributed to Partners)</span><span>Rs. '+fmt(net)+'</span></div>'+
   '</div>'+
   '<table style="margin-bottom:20px;"><thead><tr><th>Partner</th><th>Share%</th><th>Net Balance</th><th>Due Amount</th><th>Total Paid</th><th>Remaining</th><th>Status</th></tr></thead><tbody>'+
-  printPartners.map(p=>{
+  D.partnerDefs.map(p=>{
     const due=net*(p.share/100);
     const openPaid=a.partnerOpening[p.id]||0;
     const newPaid=(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
@@ -2132,6 +2044,9 @@ function printMonthArchive(month){
     return '<tr><td><b>'+p.name+'</b></td><td>'+p.share+'%</td><td style="font-weight:700;">Rs. '+fmt(net)+'</td><td style="font-weight:700;color:#b8943f;">Rs. '+fmt(due)+'</td><td style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(paid)+'</td><td style="font-weight:700;color:'+(rem>0?'#c0392b':'#1a7a3a')+';">Rs. '+fmt(Math.abs(rem))+'</td><td>'+(rem>0?'⚠ Pending':'✅ Clear')+'</td></tr>';
   }).join('')+
   '</tbody></table>'+
+  '<div style="background:#fffbe6;border:1px solid #f0c040;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:11.5px;color:#5a4a00;">'+
+  '<b>Note:</b> Note: Some vendor bills and supplier payments are still pending. Final figures may change upon settlement of outstanding dues.'+
+  '</div>'+
   '<div class="sign"><div><div class="line"></div>Prepared By</div><div><div class="line"></div>Checked By</div><div><div class="line"></div>Approved By (CEO)</div></div>'+
   '</body></html>');
   win.document.close();
@@ -2168,13 +2083,77 @@ function saveOpeningBalance(){
       if(el) D.opening[k]=Number(el.value)||0;
       if(desc) D.opening['desc_'+k]=desc.value;
     });
+    // Custom cats bhi
+    Object.keys(D.customCats||{}).forEach(k=>{
+      const el=document.getElementById('ob-'+k);
+      if(el) D.opening[k]=Number(el.value)||0;
+    });
+
+    // Cascade update - sab archived months update karo
+    cascadeFromOpening();
+
     saveDB();
-    showAlert('ob-alert','s','✅ Opening Balance save ho gaya!');
+    showAlert('ob-alert','s','✅ Opening Balance save ho gaya! Sab months update ho gaye!');
     renderObSummary();
     renderDashboard();
+    renderMonthly();
   }catch(err){
     showAlert('ob-alert','e','❌ Save failed: '+err.message);
   }
+}
+
+function cascadeFromOpening(){
+  // Sab archived months ko date order mein sort karo
+  const sorted=[...D.monthArchive].sort((a,b)=>a.month.localeCompare(b.month));
+  if(!sorted.length) return;
+
+  // Pehle month ka opening = D.opening (Dec 2022 opening)
+  let prevOpening={...D.opening};
+  let prevExpenses=[...D.expenses]; // Active month ki expenses
+
+  // Pehle archived month se shuru karo
+  for(let i=0;i<sorted.length;i++){
+    const arc=sorted[i];
+    const arcIdx=D.monthArchive.findIndex(a=>a.month===arc.month);
+
+    // Is month ka opening = pichle month ka closing
+    D.monthArchive[arcIdx].opening={...prevOpening};
+
+    // Opening total calculate karo
+    const openTotal=Object.keys(prevOpening).reduce((s,k)=>s+Number(prevOpening[k]||0),0);
+
+    // Is month ki expenses
+    const arcExp=(arc.expenses||[]).reduce((s,e)=>s+Number(e.amount||0),0);
+
+    // Next month ka opening = is month ka opening + expenses
+    const newOpening={};
+    Object.keys(prevOpening).forEach(k=>{
+      const expAmt=(arc.expenses||[]).filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+      newOpening[k]=(prevOpening[k]||0)+expAmt;
+    });
+    // Custom cats
+    Object.keys(D.customCats||{}).forEach(k=>{
+      const expAmt=(arc.expenses||[]).filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+      newOpening[k]=(prevOpening[k]||0)+expAmt;
+    });
+
+    prevOpening=newOpening;
+  }
+
+  // Active month ka opening bhi update karo
+  D.opening={...prevOpening};
+
+  // Monthly closing entries mein bhi opening update karo
+  D.monthly.forEach(m=>{
+    const arc=D.monthArchive.find(a=>a.month===m.month);
+    if(arc&&arc.opening){
+      const openTotal=Object.values(arc.opening).reduce((s,v)=>s+Number(v||0),0);
+      m.opening=openTotal;
+      m.closing=openTotal+Number(m.exp||0);
+    }
+  });
+
+  console.log('✅ Cascade from opening complete!');
 }
 
 function savePartnerOpeningBalance(){
@@ -2882,6 +2861,9 @@ function renderReconciliation(){
       }).join(''):'<div class="recon-row"><span>No monthly records</span><span>—</span></div>'}
     </div>
 
+    <div style="background:#fffbe6;border:1px solid #f0c040;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:12.5px;color:#5a4a00;">
+      <b>📌 Note:</b> Note: Some vendor bills and supplier payments are still pending. Final figures may change upon settlement of outstanding dues.
+    </div>
     <div style="display:flex;gap:30px;margin-top:40px;padding-top:20px;border-top:2px solid var(--dark);">
       ${['Prepared By','Checked By','Approved By (CEO)'].map(r=>`<div style="flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--text2);">
         <div style="height:40px;border-bottom:1px solid var(--dark);margin-bottom:6px;"></div>${r}</div>`).join('')}
