@@ -2162,10 +2162,34 @@ function savePartnerOpeningBalance(){
       const el=document.getElementById('pob-'+p.id);
       if(el) D.partnerOpening[p.id]=Number(el.value)||0;
     });
+
+    // Cascade update - sab archived months mein bhi partner opening update karo
+    // Pehla archived month ka partnerOpening = D.partnerOpening (Dec 2022 opening)
+    const sorted=[...D.monthArchive].sort((a,b)=>a.month.localeCompare(b.month));
+    let prevPartnerOpening={...D.partnerOpening};
+
+    sorted.forEach((arc,i)=>{
+      const arcIdx=D.monthArchive.findIndex(a=>a.month===arc.month);
+      // Is month ka opening = pichle month ka opening + pichle month ki payments
+      D.monthArchive[arcIdx].partnerOpening={...prevPartnerOpening};
+
+      // Next month ka opening = is month ka opening + is month ki payments
+      const newPartnerOpening={};
+      D.partnerDefs.forEach(p=>{
+        const paid=(arc.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+        newPartnerOpening[p.id]=(prevPartnerOpening[p.id]||0)+paid;
+      });
+      prevPartnerOpening=newPartnerOpening;
+    });
+
+    // Active month ka partner opening bhi update karo
+    D.partnerOpening={...prevPartnerOpening};
+
     saveDB();
-    showAlert('pob-alert','s','✅ Partner Opening Balance save ho gaya!');
+    showAlert('pob-alert','s','✅ Partner Opening Balance save ho gaya! Sab months update ho gaye!');
     renderDashboard();
     renderPartnerCards();
+    renderMonthly();
   }catch(err){
     showAlert('pob-alert','e','❌ Save failed: '+err.message);
   }
