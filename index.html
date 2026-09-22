@@ -2817,17 +2817,23 @@ function renderReconciliation(){
     return s+openPaid+newPaid;
   },0);
 
+  let totalRemaining=0;
   const partnerRows=D.partnerDefs.map(p=>{
     const due=netBalance*(p.share/100);
     const openPaid=D.partnerOpening[p.id]||0;
     const newPaid=D.partners.filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
     const paid=openPaid+newPaid;
     const rem=due-paid;
+    totalRemaining+=rem;
     return`<div class="recon-row">
       <span><b>${p.name}</b> (${p.share}%) — Due: Rs. ${fmt(due)} | Paid: Rs. ${fmt(paid)}</span>
       <span class="${rem>0?'text-red':'text-green'} amount">${rem>0?'⚠ Pending':'✅'} Rs. ${fmt(Math.abs(rem))}</span>
     </div>`;
-  }).join('');
+  }).join('')+
+  `<div style="display:flex;justify-content:space-between;padding:10px 0;margin-top:8px;border-top:2px solid var(--dark);font-size:14px;font-weight:800;">
+    <span>Total Remaining Balance</span>
+    <span class="${totalRemaining>0?'text-red':'text-green'}">Rs. ${fmt(Math.abs(totalRemaining))}</span>
+  </div>`;
 
   const catRows=Object.entries(CATS).map(([k,v])=>{
     const openAmt=D.opening[k]||0;
