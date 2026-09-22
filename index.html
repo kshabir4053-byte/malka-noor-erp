@@ -1921,11 +1921,18 @@ function viewMonthDetail(month){
     return '<tr><td>'+(i+1)+'</td><td>'+f.name+'</td><td>'+f.flatno+'</td><td class="text-green amount">Rs. '+fmt(coll)+'</td><td class="'+(Number(f.saleValue)-coll>0?'text-red':'text-green')+' amount">Rs. '+fmt(Number(f.saleValue)-coll)+'</td></tr>';
   }).join('');
   const viewPartners=a.partnerDefs||D.partnerDefs;
+  let viewTotalRem=0;
   const partnerRows=viewPartners.map(p=>{
     const due=net*(p.share/100);
     const paid=(a.partnerOpening[p.id]||0)+(a.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
-    return '<tr><td><b>'+p.name+'</b></td><td>'+p.share+'%</td><td class="amount text-gold">Rs. '+fmt(due)+'</td><td class="amount text-green">Rs. '+fmt(paid)+'</td><td class="amount '+(due-paid>0?'text-red':'text-green')+'">Rs. '+fmt(Math.abs(due-paid))+'</td></tr>';
-  }).join('');
+    const rem=due-paid;
+    viewTotalRem+=rem;
+    return '<tr><td><b>'+p.name+'</b></td><td>'+p.share+'%</td><td class="amount text-gold">Rs. '+fmt(due)+'</td><td class="amount text-green">Rs. '+fmt(paid)+'</td><td class="amount '+(rem>0?'text-red':'text-green')+'">Rs. '+fmt(Math.abs(rem))+'</td></tr>';
+  }).join('')+
+  '<tr style="background:linear-gradient(135deg,#f0f4fa,#e8eef8);font-weight:800;">'+
+  '<td colspan="4" style="padding:10px 12px;"><b>Total Remaining Balance</b></td>'+
+  '<td class="amount '+(viewTotalRem>0?'text-red':'text-green')+'" style="padding:10px 12px;font-size:14px;"><b>Rs. '+fmt(Math.abs(viewTotalRem))+'</b></td>'+
+  '</tr>';
 
   detail.innerHTML='<div class="card" style="margin-top:16px;">'+
     '<div class="card-header"><h3>📊 '+month+' — Tafseel</h3><button class="btn btn-gold btn-sm" onclick="printMonthArchive(\'' + month + '\')">🖨️ Print</button></div>'+
