@@ -1722,6 +1722,41 @@ function editArchivedMonth(month){
         </table>
       </div>
 
+      <div style="font-size:14px;font-weight:800;color:var(--dark);margin:16px 0 10px;border-left:4px solid var(--green);padding-left:10px;">➕ Nai Expense Add Karein</div>
+      <div style="background:#f0faf4;border:1px solid rgba(26,122,58,.2);border-radius:10px;padding:16px;margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Category</div>
+            <select id="arch-new-cat" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;">
+              ${Object.entries(CATS).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('')}
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Date</div>
+            <input type="date" id="arch-new-date" value="${month}-01" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Amount (Rs.)</div>
+            <input type="number" id="arch-new-amount" placeholder="0" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Vendor</div>
+            <input type="text" id="arch-new-vendor" placeholder="Vendor ya description" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Mode</div>
+            <select id="arch-new-mode" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;">
+              <option>Cash</option><option>Online</option><option>RTGS</option><option>CHQ</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Remarks</div>
+            <input type="text" id="arch-new-remarks" placeholder="Optional" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;">
+          </div>
+        </div>
+        <button class="btn btn-green" onclick="addArchExp('${month}')">➕ Add Expense</button>
+      </div>
+
       <div style="margin-top:12px;display:flex;gap:10px;">
         <button class="btn btn-gold" onclick="saveArchiveEdits('${month}')">💾 Save All Changes</button>
         <button class="btn btn-navy" onclick="document.getElementById('history-detail').innerHTML=''">✕ Close</button>
@@ -1757,6 +1792,26 @@ function updateArchExp(month, id, field, value){
   const exp=a.expenses.find(e=>e.id===id);
   if(!exp) return;
   exp[field]=field==='amount'?Number(value):value;
+}
+
+function addArchExp(month){
+  const cat=document.getElementById('arch-new-cat').value;
+  const date=document.getElementById('arch-new-date').value;
+  const amount=Number(document.getElementById('arch-new-amount').value);
+  const vendor=document.getElementById('arch-new-vendor').value.trim();
+  const mode=document.getElementById('arch-new-mode').value;
+  const remarks=document.getElementById('arch-new-remarks').value;
+  if(!vendor||!amount){alert('Vendor aur Amount zaroori hain!');return;}
+  const a=D.monthArchive.find(x=>x.month===month);
+  if(!a) return;
+  if(!a.expenses) a.expenses=[];
+  a.expenses.push({
+    id:'e'+Date.now(),
+    category:cat,date,amount,vendor,mode,remarks,
+    vno:'MANUAL',createdAt:new Date().toISOString()
+  });
+  editArchivedMonth(month); // Refresh
+  alert('✅ Expense add ho gaya!');
 }
 
 function deleteArchExp(month, id){
