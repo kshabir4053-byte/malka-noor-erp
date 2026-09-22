@@ -1728,7 +1728,7 @@ function editArchivedMonth(month){
           <div>
             <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Category</div>
             <select id="arch-new-cat" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;">
-              ${Object.entries(CATS).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('')}
+              ${Object.entries(CATS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
             </select>
           </div>
           <div>
