@@ -3180,8 +3180,63 @@ function selectLedgerPartner(id){
 function printPartnerOpeningLedger(){
   const pid=document.getElementById('pl-select')?.value; if(!pid) return;
   const r=buildPartnerLedgerHTML(pid,false);
+  const pd=D.partnerDefs.find(p=>p.id===pid)||{};
+  // Partner card ka hisaab (ERP wali screen jaisa)
+  const expTotal=D.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const totalExp=totalOpening()+expTotal;
+  const totalColl=D.flats.reduce((s,f)=>s+f.payments.reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+  const due=(totalExp-totalColl)*((pd.share||0)/100);
+  const openPaid=D.partnerOpening[pid]||0;
+  const newPaid=D.partners.filter(x=>x.partner===pid&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+  const paid=openPaid+newPaid, rem=due-paid;
+  const remCol=rem>0.5?'#c0392b':'#1a7a3a';
+  const row=(a,b,c)=>`<div class="prow"><span>${a}</span><span style="font-weight:800;color:${c||'#1a2340'};">${b}</span></div>`;
+  const css=`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap');
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box;}
+  body{font-family:'Outfit',Arial,sans-serif;padding:22px;color:#1a2340;}
+  .hd{text-align:center;border-bottom:3px double #0f1f3d;padding-bottom:10px;margin-bottom:14px;}
+  .hd h1{font-size:22px;font-weight:900;color:#0f1f3d;margin:0;}.hd p{font-size:11px;color:#666;margin:3px 0 0;}
+  .ttl{text-align:center;font-size:14px;font-weight:800;color:#0f1f3d;margin-bottom:12px;letter-spacing:.5px;}
+  .banner{background:linear-gradient(135deg,#0f1f3d,#1a2f55);border-radius:12px;padding:14px 18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+  .banner .k{font-size:9px;letter-spacing:1px;font-weight:700;color:#d4af5a;}
+  .banner .n{font-size:20px;font-weight:900;color:#fff;margin-top:2px;}
+  .banner .s{font-size:11px;color:#d4af5a;margin-top:2px;}
+  .banner .c{font-size:22px;font-weight:900;color:#f0d080;}
+  .box{border:1px solid #dde6f0;border-top:4px solid #b8943f;border-radius:10px;padding:10px 14px;margin-bottom:14px;}
+  .prow{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #dde6f0;font-size:12px;}.prow:last-child{border-bottom:none;}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;}
+  thead tr{background:linear-gradient(135deg,#0f1f3d,#1a2f55);}
+  th{color:#d4af5a;padding:8px 10px;text-align:left;font-weight:600;}
+  td{padding:7px 10px;border-bottom:1px solid #dde6f0;}
+  tfoot td{background:#f0f4fa;font-weight:800;border-top:2px solid #dde6f0;}
+  .amount{font-weight:700;}.text-red{color:#c0392b;}.text-green{color:#1a7a3a;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;}
+  .b-gold{background:rgba(184,148,63,.15);color:#8a6e2a;}.b-blue{background:rgba(26,47,85,.1);color:#0f1f3d;}
+  .sign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;margin-top:46px;text-align:center;font-size:11px;}
+  .sign div{border-top:1px solid #000;padding-top:6px;}`;
   const w=window.open('','_blank','width=1000,height=700');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${plEsc(getPartnerName(pid))} Ledger</title><style>body{font-family:Arial,sans-serif;padding:20px;}h2{text-align:center;margin-bottom:6px;}.sub{text-align:center;font-size:12px;margin-bottom:14px;color:#444;}table{width:100%;border-collapse:collapse;font-size:12px;}th,td{border:1px solid #bbb;padding:5px 8px;text-align:left;}th{background:#0f1f3d;color:#fff;}.amount{text-align:right;font-weight:bold;}tfoot td{font-weight:bold;background:#eee;}</style></head><body><h2>${plEsc(D.settings.company||'')}</h2><div class="sub">${plEsc(D.settings.address||'')}</div><h2 style="font-size:16px;border-top:2px solid #0f1f3d;border-bottom:2px solid #0f1f3d;padding:6px 0;">PARTNER LEDGER — ${plEsc(getPartnerName(pid))}${(D.partnerDefs.find(p=>p.id===pid)||{}).share!=null?' ('+D.partnerDefs.find(p=>p.id===pid).share+'% Share)':''}</h2><div class="sub">Closing Balance: <b>Rs. ${fmt(r.closing)}</b>${r.subTxt?' ('+r.subTxt+')':''} &nbsp;|&nbsp; Printed: ${new Date().toLocaleDateString('en-GB')}</div>${r.table}</body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${plEsc(pd.name||pid)} — Partner Ledger</title><style>${css}</style></head><body>
+    <div class="hd"><h1>${plEsc(D.settings.company||'')}</h1><p>${plEsc(D.settings.address||'')} &nbsp;|&nbsp; ${plEsc(D.settings.phone||'')}</p></div>
+    <div class="ttl">PARTNER LEDGER</div>
+    <div class="banner">
+      <div><div class="k">PARTNER LEDGER</div><div class="n">${plEsc(pd.name||pid)}</div>
+        <div class="s">Share: ${pd.share!=null?pd.share+'%':'—'} &nbsp;|&nbsp; ${r.count} entries</div></div>
+      <div style="text-align:right;"><div class="k">CLOSING BALANCE (PAID)</div><div class="c">Rs. ${fmt(r.closing)}</div>
+        ${r.subTxt?`<div style="font-size:10.5px;color:#fff;opacity:.85;margin-top:2px;">${r.subTxt}</div>`:''}</div>
+    </div>
+    <div class="box">
+      ${row('Partner',plEsc(pd.name||pid))}
+      ${row('Share',pd.share!=null?pd.share+'%':'—')}
+      ${row('Total Due','Rs. '+fmt(due),'#b8943f')}
+      ${row('Opening Paid','Rs. '+fmt(openPaid),'#1565c0')}
+      ${row('New Payments','Rs. '+fmt(newPaid),'#1a7a3a')}
+      ${row('Total Paid','Rs. '+fmt(paid),'#1a7a3a')}
+      ${row(pendLabel(rem),'Rs. '+fmt(Math.abs(rem)),remCol)}
+    </div>
+    ${r.table}
+    <div class="sign"><div>Prepared By</div><div>Checked By</div><div>Approved By (CEO)</div></div>
+    <div style="text-align:center;font-size:10px;color:#777;margin-top:14px;">Printed: ${new Date().toLocaleDateString('en-GB')}</div>
+  </body></html>`);
   w.document.close(); w.onload=()=>{w.focus();w.print();};
 }
 
