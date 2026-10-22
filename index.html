@@ -270,6 +270,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <div class="nav-tab" onclick="showPage('contractors')">🏗️ Contractors</div>
   <div class="nav-tab" onclick="showPage('history')">🗂️ Month History</div>
   <div class="nav-tab" onclick="showPage('catledger')">📒 Category Ledger</div>
+  <div class="nav-tab" onclick="showPage('monthstmt')">📄 Monthly Statement</div>
 </div>
 
 <div class="main">
@@ -763,6 +764,25 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
           <input type="text" id="ct-desc" placeholder="Payment description">
         </div>
       </div>
+      <!-- Auto expense option -->
+      <div id="ct-expense-opt" style="background:rgba(26,122,58,.06);border:1px solid rgba(26,122,58,.2);border-radius:10px;padding:14px 16px;margin-top:14px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:700;color:var(--dark);">
+          <input type="checkbox" id="ct-add-expense" onchange="toggleCtExpense()" style="width:16px;height:16px;cursor:pointer;">
+          💸 Payment ko Daily Expenses mein bhi add karo
+        </label>
+        <div id="ct-expense-fields" style="display:none;margin-top:12px;display:none;">
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+            <div class="form-group">
+              <label>Expense Category</label>
+              <select id="ct-exp-cat"></select>
+            </div>
+            <div class="form-group">
+              <label>Voucher No</label>
+              <input type="text" id="ct-exp-vno" placeholder="Auto ya manual">
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="btn-row no-print">
         <button class="btn btn-gold" onclick="saveContractor()">💾 Save</button>
         <button class="btn btn-navy" onclick="clearContractor()">🗑 Clear</button>
@@ -833,6 +853,30 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
           </tr></tfoot>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MONTHLY STATEMENT ==================== -->
+<div class="page" id="pg-monthstmt">
+  <div class="card">
+    <div class="card-header">
+      <h3>📄 Monthly Statement — Select & Print</h3>
+    </div>
+    <div class="card-body">
+      <div class="info-box" style="margin-bottom:16px;">
+        Month select karein — us month ka poora reconciliation statement aaye ga — print kar ke partners ko dein۔
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
+        <div class="form-group" style="margin:0;">
+          <label>Month Select Karein</label>
+          <select id="stmt-month-sel" onchange="renderMonthStmt()" class="filter-sel" style="padding:10px 16px;font-size:14px;min-width:200px;">
+            <option value="">-- Month Select Karein --</option>
+          </select>
+        </div>
+        <button class="btn btn-gold no-print" onclick="printMonthStmt()" style="margin-top:20px;">🖨️ Print Statement</button>
+      </div>
+      <div id="month-stmt-body"></div>
     </div>
   </div>
 </div>
@@ -1208,7 +1252,7 @@ function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
   document.getElementById('pg-'+p).classList.add('active');
-  const tabs=['dashboard','opening','expenses','flats','monthly','partners','recon','contractors','history','catledger'];
+  const tabs=['dashboard','opening','expenses','flats','monthly','partners','recon','contractors','history','catledger','monthstmt'];
   const idx=tabs.indexOf(p);
   if(idx>=0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   const renders={
@@ -1221,7 +1265,8 @@ function showPage(p){
     recon:renderReconciliation,
     contractors:renderContractors,
     history:()=>{setTimeout(renderHistory,50);},
-    catledger:()=>{renderCatLedger();}
+    catledger:()=>{renderCatLedger();},
+    monthstmt:()=>{buildMonthStmtDropdown();}
   };
   if(renders[p]) renders[p]();
 }
@@ -1494,6 +1539,250 @@ function renderCatLedger(){
       </div>`;
     }).filter(Boolean).join('');
   }
+}
+
+// ===== MONTHLY STATEMENT =====
+function buildMonthStmtDropdown(){
+  const sel=document.getElementById('stmt-month-sel');
+  if(!sel) return;
+  const archived=[...D.monthArchive].sort((a,b)=>b.month.localeCompare(a.month));
+  sel.innerHTML='<option value="">-- Month Select Karein --</option>'+
+    archived.map(a=>`<option value="${a.month}">${a.month}</option>`).join('');
+  // Active month bhi add karo
+  sel.innerHTML+= `<option value="active">${D.activeMonth} (Current)</option>`;
+}
+
+function renderMonthStmt(){
+  const sel=document.getElementById('stmt-month-sel').value;
+  if(!sel){document.getElementById('month-stmt-body').innerHTML='';return;}
+  
+  let data, isActive=false;
+  if(sel==='active'){
+    isActive=true;
+    data={
+      month:D.activeMonth,
+      expenses:[...D.expenses],
+      partners:[...D.partners],
+      flats:JSON.parse(JSON.stringify(D.flats)),
+      opening:{...D.opening},
+      partnerOpening:{...D.partnerOpening},
+      partnerDefs:JSON.parse(JSON.stringify(D.partnerDefs))
+    };
+  } else {
+    data=D.monthArchive.find(a=>a.month===sel);
+  }
+  if(!data){document.getElementById('month-stmt-body').innerHTML='<div class="empty">Data nahi mila!</div>';return;}
+
+  const expTotal=(data.expenses||[]).reduce((s,e)=>s+Number(e.amount||0),0);
+  const openTotal=Object.values(data.opening||{}).filter(v=>typeof v==='number').reduce((s,v)=>s+v,0);
+  const totalExp=openTotal+expTotal;
+  const totalColl=(data.flats||[]).reduce((s,f)=>s+(f.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+  const net=totalExp-totalColl;
+  const partners=data.partnerDefs||D.partnerDefs;
+  
+  let totalRem=0;
+  const partnerRows=partners.map(p=>{
+    const due=net*(p.share/100);
+    const paid=(data.partnerOpening[p.id]||0)+(data.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+    const rem=due-paid;
+    totalRem+=rem;
+    return `<tr>
+      <td><b>${p.name}</b></td>
+      <td>${p.share}%</td>
+      <td class="amount text-gold">Rs. ${fmt(due)}</td>
+      <td class="amount text-green">Rs. ${fmt(paid)}</td>
+      <td class="amount ${rem>0?'text-red':'text-green'}">Rs. ${fmt(Math.abs(rem))}</td>
+      <td><span class="badge ${rem>0?'b-red':'b-green'}">${rem>0.5?'⚠ Pending':(rem<-0.5?'➕ Advance Paid':'✅ Clear')}</span></td>
+    </tr>`;
+  }).join('');
+
+  const expByCat={};
+  Object.keys(CATS).forEach(k=>{
+    const openAmt=(data.opening||{})[k]||0;
+    const expAmt=(data.expenses||[]).filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+    if(openAmt||expAmt) expByCat[k]={open:openAmt,exp:expAmt,total:openAmt+expAmt};
+  });
+  const catRows=Object.entries(expByCat).map(([k,v])=>`
+    <tr>
+      <td>${CATS[k]||k}</td>
+      <td class="amount text-blue">Rs. ${fmt(v.open)}</td>
+      <td class="amount text-red">Rs. ${fmt(v.exp)}</td>
+      <td class="amount" style="font-weight:800;">Rs. ${fmt(v.total)}</td>
+    </tr>`).join('');
+
+  document.getElementById('month-stmt-body').innerHTML=`
+    <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,var(--dark),var(--dark2));padding:20px 24px;text-align:center;">
+        <div style="font-size:20px;font-weight:900;color:#fff;">${D.settings.company}</div>
+        <div style="font-size:11px;color:rgba(212,175,90,.8);margin-top:3px;">${D.settings.address}</div>
+        <div style="display:inline-block;background:rgba(184,148,63,.2);color:var(--gold);padding:4px 16px;border-radius:20px;font-size:12px;font-weight:700;margin-top:8px;">
+          MONTHLY RECONCILIATION — ${data.month}
+        </div>
+      </div>
+
+      <div style="padding:20px 24px;">
+        <!-- Summary -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+          <div style="background:#fef0ee;border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:9px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;">Opening Balance</div>
+            <div style="font-size:16px;font-weight:800;color:var(--red);margin-top:4px;">Rs. ${fmt(openTotal)}</div>
+          </div>
+          <div style="background:#fef0ee;border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:9px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;">This Month Expenses</div>
+            <div style="font-size:16px;font-weight:800;color:var(--red);margin-top:4px;">Rs. ${fmt(expTotal)}</div>
+          </div>
+          <div style="background:#e6f8ee;border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:9px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;">Flat Collection</div>
+            <div style="font-size:16px;font-weight:800;color:var(--green);margin-top:4px;">Rs. ${fmt(totalColl)}</div>
+          </div>
+        </div>
+
+        <!-- Net Balance -->
+        <div style="background:linear-gradient(135deg,var(--dark),var(--dark2));border-radius:10px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div style="color:rgba(255,255,255,.7);font-size:13px;font-weight:600;">Net Balance (Total Cost − Flat Collection)</div>
+          <div style="color:var(--gold);font-size:20px;font-weight:900;">Rs. ${fmt(net)}</div>
+        </div>
+
+        <!-- Category breakdown -->
+        <div style="font-size:13px;font-weight:800;color:var(--dark);margin-bottom:8px;border-left:3px solid var(--gold);padding-left:10px;">💸 Expense Category Breakdown</div>
+        <div class="tbl-wrap" style="margin-bottom:20px;">
+          <table>
+            <thead><tr><th>Category</th><th>Opening</th><th>This Month</th><th>Total</th></tr></thead>
+            <tbody>${catRows}</tbody>
+            <tfoot><tr><td><b>TOTAL</b></td><td class="amount text-blue"><b>Rs. ${fmt(openTotal)}</b></td><td class="amount text-red"><b>Rs. ${fmt(expTotal)}</b></td><td class="amount"><b>Rs. ${fmt(totalExp)}</b></td></tr></tfoot>
+          </table>
+        </div>
+
+        <!-- Partner shares -->
+        <div style="font-size:13px;font-weight:800;color:var(--dark);margin-bottom:8px;border-left:3px solid var(--gold);padding-left:10px;">👥 Partner Share Statement</div>
+        <div class="tbl-wrap" style="margin-bottom:16px;">
+          <table>
+            <thead><tr><th>Partner</th><th>Share%</th><th>Due Amount</th><th>Total Paid</th><th>Remaining</th><th>Status</th></tr></thead>
+            <tbody>${partnerRows}</tbody>
+            <tfoot><tr><td colspan="4"><b>Total Remaining</b></td><td class="amount ${totalRem>0?'text-red':'text-green'}"><b>Rs. ${fmt(Math.abs(totalRem))}</b></td><td></td></tr></tfoot>
+          </table>
+        </div>
+
+        <!-- Note -->
+        <div style="background:#fffbe6;border:1px solid #f0c040;border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:11.5px;color:#5a4a00;">
+          <b>Note:</b> Some vendor bills and supplier payments are still pending. Final figures may change upon settlement of outstanding dues.
+        </div>
+
+        <!-- Signatures -->
+        <div style="display:flex;gap:30px;padding-top:20px;border-top:1px solid var(--border);">
+          ${['Prepared By','Checked By','Approved By (CEO)'].map(r=>`
+            <div style="flex:1;text-align:center;font-size:11px;font-weight:700;color:var(--text2);">
+              <div style="height:36px;border-bottom:1px solid var(--dark);margin-bottom:6px;"></div>${r}
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function printMonthStmt(){
+  const sel=document.getElementById('stmt-month-sel').value;
+  if(!sel){alert('Pehle month select karein!');return;}
+  
+  let data;
+  if(sel==='active'){
+    data={
+      month:D.activeMonth,
+      expenses:[...D.expenses],
+      partners:[...D.partners],
+      flats:JSON.parse(JSON.stringify(D.flats)),
+      opening:{...D.opening},
+      partnerOpening:{...D.partnerOpening},
+      partnerDefs:JSON.parse(JSON.stringify(D.partnerDefs))
+    };
+  } else {
+    data=D.monthArchive.find(a=>a.month===sel);
+  }
+  if(!data){alert('Data nahi mila!');return;}
+
+  const expTotal=(data.expenses||[]).reduce((s,e)=>s+Number(e.amount||0),0);
+  const openTotal=Object.values(data.opening||{}).filter(v=>typeof v==='number').reduce((s,v)=>s+v,0);
+  const totalExp=openTotal+expTotal;
+  const totalColl=(data.flats||[]).reduce((s,f)=>s+(f.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+  const net=totalExp-totalColl;
+  const partners=data.partnerDefs||D.partnerDefs;
+
+  let totalRem=0;
+  const partnerRows=partners.map(p=>{
+    const due=net*(p.share/100);
+    const paid=(data.partnerOpening[p.id]||0)+(data.partners||[]).filter(x=>x.partner===p.id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+    const rem=due-paid;
+    totalRem+=rem;
+    return '<tr><td><b>'+p.name+'</b></td><td>'+p.share+'%</td><td style="color:#b8943f;font-weight:700;">Rs. '+fmt(due)+'</td><td style="color:#1a7a3a;font-weight:700;">Rs. '+fmt(paid)+'</td><td style="color:'+(rem>0?'#c0392b':'#1a7a3a')+';font-weight:700;">Rs. '+fmt(Math.abs(rem))+'</td><td>'+(rem>0.5?'⚠ Pending':(rem<-0.5?'➕ Advance Paid':'✅ Clear'))+'</td></tr>';
+  }).join('');
+
+  const expByCat={};
+  Object.keys(CATS).forEach(k=>{
+    const openAmt=(data.opening||{})[k]||0;
+    const expAmt=(data.expenses||[]).filter(e=>e.category===k).reduce((s,e)=>s+Number(e.amount||0),0);
+    if(openAmt||expAmt) expByCat[k]={open:openAmt,exp:expAmt,total:openAmt+expAmt};
+  });
+  const catRows=Object.entries(expByCat).map(([k,v])=>'<tr><td>'+(CATS[k]||k)+'</td><td style="color:#1565c0;font-weight:700;">Rs. '+fmt(v.open)+'</td><td style="color:#c0392b;font-weight:700;">Rs. '+fmt(v.exp)+'</td><td style="font-weight:800;">Rs. '+fmt(v.total)+'</td></tr>').join('');
+
+  const win=window.open('','_blank','width=900,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>${D.settings.company} — ${data.month} Statement</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Outfit',sans-serif;background:#fff;padding:28px 36px;color:#1a2340;}
+    .hdr{text-align:center;border-bottom:3px double #0f1f3d;padding-bottom:14px;margin-bottom:18px;}
+    .hdr h1{font-size:22px;font-weight:900;color:#0f1f3d;}
+    .hdr p{font-size:11px;color:#666;margin-top:3px;}
+    .badge{display:inline-block;background:#0f1f3d;color:#b8943f;padding:4px 16px;border-radius:20px;font-size:12px;font-weight:700;margin-top:8px;}
+    .meta{display:flex;justify-content:space-between;font-size:11px;color:#999;margin-bottom:16px;}
+    .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+    .sum-box{border:1px solid #dde6f0;border-radius:8px;padding:10px 14px;text-align:center;}
+    .sum-box .lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999;margin-bottom:4px;}
+    .sum-box .val{font-size:16px;font-weight:800;}
+    .net-box{background:#0f1f3d;color:#b8943f;border-radius:8px;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+    .net-box .lbl{font-size:12px;color:rgba(255,255,255,.7);}
+    .net-box .val{font-size:20px;font-weight:900;}
+    .sec{font-size:13px;font-weight:800;color:#0f1f3d;margin:14px 0 8px;border-left:3px solid #b8943f;padding-left:10px;}
+    table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;}
+    thead tr{background:#0f1f3d;}thead th{color:#b8943f;padding:8px 10px;text-align:left;font-weight:700;font-size:11px;}
+    tbody tr{border-bottom:1px solid #dde6f0;}tbody td{padding:7px 10px;}
+    tfoot tr{background:#f0f4fa;font-weight:700;}tfoot td{padding:8px 10px;border-top:2px solid #dde6f0;}
+    .note{background:#fffbe6;border:1px solid #f0c040;border-radius:6px;padding:10px 14px;font-size:11px;color:#5a4a00;margin-bottom:14px;}
+    .sign{display:flex;gap:30px;margin-top:30px;padding-top:14px;border-top:2px solid #0f1f3d;}
+    .sign div{flex:1;text-align:center;font-size:11px;font-weight:700;color:#666;}
+    .sign .line{height:36px;border-bottom:1px solid #0f1f3d;margin-bottom:5px;}
+    @media print{@page{margin:1cm;}}
+  </style></head><body>
+  <div class="hdr">
+    <h1>${D.settings.company}</h1>
+    <p>${D.settings.address} | ${D.settings.phone}</p>
+    <div class="badge">MONTHLY RECONCILIATION — ${data.month}</div>
+  </div>
+  <div class="meta"><span>Printed: ${new Date().toLocaleString('en-PK')}</span><span>MNR ERP v2</span></div>
+  <div class="summary">
+    <div class="sum-box"><div class="lbl">Opening Balance</div><div class="val" style="color:#c0392b;">Rs. ${fmt(openTotal)}</div></div>
+    <div class="sum-box"><div class="lbl">This Month Expenses</div><div class="val" style="color:#c0392b;">Rs. ${fmt(expTotal)}</div></div>
+    <div class="sum-box"><div class="lbl">Flat Collection</div><div class="val" style="color:#1a7a3a;">Rs. ${fmt(totalColl)}</div></div>
+  </div>
+  <div class="net-box"><div class="lbl">Net Balance (Total Cost − Flat Collection)</div><div class="val">Rs. ${fmt(net)}</div></div>
+  <div class="sec">💸 Expense Category Breakdown</div>
+  <table><thead><tr><th>Category</th><th>Opening</th><th>This Month</th><th>Total</th></tr></thead>
+  <tbody>${catRows}</tbody>
+  <tfoot><tr><td><b>TOTAL</b></td><td style="color:#1565c0;font-weight:700;"><b>Rs. ${fmt(openTotal)}</b></td><td style="color:#c0392b;font-weight:700;"><b>Rs. ${fmt(expTotal)}</b></td><td style="font-weight:800;"><b>Rs. ${fmt(totalExp)}</b></td></tr></tfoot></table>
+  <div class="sec">👥 Partner Share Statement</div>
+  <table><thead><tr><th>Partner</th><th>Share%</th><th>Due Amount</th><th>Total Paid</th><th>Remaining</th><th>Status</th></tr></thead>
+  <tbody>${partnerRows}</tbody>
+  <tfoot><tr><td colspan="4"><b>Total Remaining Balance</b></td><td style="color:${totalRem>0?'#c0392b':'#1a7a3a'};font-weight:800;"><b>Rs. ${fmt(Math.abs(totalRem))}</b></td><td></td></tr></tfoot></table>
+  <div class="note"><b>Note:</b> Some vendor bills and supplier payments are still pending. Final figures may change upon settlement of outstanding dues.</div>
+  <div class="sign">
+    <div><div class="line"></div>Prepared By</div>
+    <div><div class="line"></div>Checked By</div>
+    <div><div class="line"></div>Approved By (CEO)</div>
+  </div>
+  </body></html>`);
+  win.document.close();
+  win.onload=()=>{win.focus();win.print();}
 }
 
 function recoverArchive(){
@@ -2106,7 +2395,7 @@ function printMonthArchive(month){
       const paid=openPaid+newPaid;
       const rem=due-paid;
       printTotalRem+=rem;
-      return '<tr><td><b>'+p.name+'</b></td><td>'+p.share+'%</td><td style="font-weight:700;">Rs. '+fmt(net)+'</td><td style="font-weight:700;color:#b8943f;">Rs. '+fmt(due)+'</td><td style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(paid)+'</td><td style="font-weight:700;color:'+(rem>0?'#c0392b':'#1a7a3a')+';">Rs. '+fmt(Math.abs(rem))+'</td><td>'+(rem>0?'⚠ Pending':'✅ Clear')+'</td></tr>';
+      return '<tr><td><b>'+p.name+'</b></td><td>'+p.share+'%</td><td style="font-weight:700;">Rs. '+fmt(net)+'</td><td style="font-weight:700;color:#b8943f;">Rs. '+fmt(due)+'</td><td style="font-weight:700;color:#1a7a3a;">Rs. '+fmt(paid)+'</td><td style="font-weight:700;color:'+(rem>0?'#c0392b':'#1a7a3a')+';">Rs. '+fmt(Math.abs(rem))+'</td><td>'+(rem>0.5?'⚠ Pending':(rem<-0.5?'➕ Advance Paid':'✅ Clear'))+'</td></tr>';
     }).join('');
     return rows+'<tr style="background:#f0f4fa;font-weight:800;"><td colspan="5"><b>Total Remaining Balance</b></td><td style="font-weight:800;color:'+(printTotalRem>0?'#c0392b':'#1a7a3a')+';font-size:13px;">Rs. '+fmt(Math.abs(printTotalRem))+'</td><td></td></tr>';
   })()+
@@ -2749,7 +3038,7 @@ function renderPartnerCards(){
       <div class="partner-row"><span>New Payments</span><span class="amount text-green">Rs. ${fmt(newPaid)}</span></div>
       <div class="partner-row"><span>Total Paid</span><span class="amount text-green">Rs. ${fmt(paid)}</span></div>
       <div class="partner-row"><span>Remaining</span><span class="amount ${rem>0?'text-red':'text-green'}">Rs. ${fmt(Math.abs(rem))}</span></div>
-      <div class="partner-row"><span>Status</span><span class="badge ${rem>0?'b-red':'b-green'}">${rem>0?'⚠ Pending':'✅ Clear'}</span></div>
+      <div class="partner-row"><span>Status</span><span class="badge ${rem>0?'b-red':'b-green'}">${rem>0.5?'⚠ Pending':(rem<-0.5?'➕ Advance Paid':'✅ Clear')}</span></div>
     </div>`;
   }).join('');
 }
@@ -2894,7 +3183,7 @@ function renderReconciliation(){
     totalRemaining+=rem;
     return`<div class="recon-row">
       <span><b>${p.name}</b> (${p.share}%) — Due: Rs. ${fmt(due)} | Paid: Rs. ${fmt(paid)}</span>
-      <span class="${rem>0?'text-red':'text-green'} amount">${rem>0?'⚠ Pending':'✅'} Rs. ${fmt(Math.abs(rem))}</span>
+      <span class="${rem>0?'text-red':'text-green'} amount">${rem>0.5?'⚠ Pending':(rem<-0.5?'➕ Advance':'✅')} Rs. ${fmt(Math.abs(rem))}</span>
     </div>`;
   }).join('')+
   `<div style="display:flex;justify-content:space-between;padding:10px 0;margin-top:8px;border-top:2px solid var(--dark);font-size:14px;font-weight:800;">
@@ -3134,16 +3423,58 @@ function updateFlat(updated){
 }
 
 // ===== CONTRACTORS =====
+function toggleCtExpense(){
+  const cb=document.getElementById('ct-add-expense');
+  const fields=document.getElementById('ct-expense-fields');
+  const sel=document.getElementById('ct-exp-cat');
+  if(sel&&!sel.options.length){
+    refreshCats();
+    sel.innerHTML=Object.entries(CATS).map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('');
+  }
+  if(fields) fields.style.display=cb.checked?'block':'none';
+}
+
 function saveContractor(){
   const name=document.getElementById('ct-name').value.trim();
   if(!name) return showAlert('cont-alert','e','Name zaroori!');
   const debit=Number(document.getElementById('ct-debit').value)||0;
   const credit=Number(document.getElementById('ct-credit').value)||0;
-  D.contractors.push({id:'c'+Date.now(),name,type:document.getElementById('ct-type').value,date:document.getElementById('ct-date').value||today(),vno:document.getElementById('ct-vno').value,debit,credit,desc:document.getElementById('ct-desc').value,createdAt:new Date().toISOString()});
-  saveDB();showAlert('cont-alert','s','✅ Saved!');clearContractor();renderContractors();updateContractorFilter();
+  const ctEntry={id:'c'+Date.now(),name,type:document.getElementById('ct-type').value,date:document.getElementById('ct-date').value||today(),vno:document.getElementById('ct-vno').value,debit,credit,desc:document.getElementById('ct-desc').value,createdAt:new Date().toISOString()};
+  D.contractors.push(ctEntry);
+
+  // Agar credit hai aur expense add karne ka option checked hai
+  const addToExp=document.getElementById('ct-add-expense')?.checked;
+  if(credit>0&&addToExp){
+    const expCat=document.getElementById('ct-exp-cat')?.value||'construction';
+    const expVno=document.getElementById('ct-exp-vno')?.value.trim()||nextVno();
+    const expEntry={
+      id:'e'+Date.now(),
+      category:expCat,
+      date:ctEntry.date,
+      vendor:name,
+      amount:credit,
+      vno:expVno,
+      mode:document.getElementById('ct-mode')?.value||'Cash',
+      remarks:'Vendor Payment — '+ctEntry.desc,
+      createdAt:new Date().toISOString()
+    };
+    D.expenses.push(expEntry);
+    showAlert('cont-alert','s','✅ Saved! Expense bhi add ho gaya — Voucher: '+expVno);
+  } else {
+    showAlert('cont-alert','s','✅ Saved!');
+  }
+
+  saveDB();clearContractor();renderContractors();updateContractorFilter();renderExpStats();
 }
 
-function clearContractor(){['ct-name','ct-date','ct-vno','ct-debit','ct-credit','ct-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('ct-date').value=today();}
+function clearContractor(){
+  ['ct-name','ct-date','ct-vno','ct-debit','ct-credit','ct-desc','ct-exp-vno'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('ct-date').value=today();
+  const cb=document.getElementById('ct-add-expense');
+  if(cb){cb.checked=false;}
+  const fields=document.getElementById('ct-expense-fields');
+  if(fields) fields.style.display='none';
+}
 
 function updateContractorFilter(){
   const names=[...new Set(D.contractors.map(c=>c.name))];
