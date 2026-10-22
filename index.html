@@ -640,6 +640,18 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   </div>
   <div class="partner-grid" id="partner-cards"></div>
 
+  <!-- Partner Opening Ledgers (Excel se) -->
+  <div class="card" id="partner-ledger-box">
+    <div class="card-header">
+      <h3>📒 Partner Opening Ledger</h3>
+      <div style="display:flex;gap:8px;">
+        <select id="pl-select" class="filter-sel" onchange="renderPartnerOpeningLedger()"></select>
+        <button class="btn btn-navy btn-sm no-print" onclick="printPartnerOpeningLedger()">🖨️ Print</button>
+      </div>
+    </div>
+    <div class="card-body" id="pl-body"></div>
+  </div>
+
   <div class="card">
     <div class="card-header">
       <h3>➕ Add Partner Payment Entry</h3>
@@ -3041,6 +3053,64 @@ function renderPartnerCards(){
       <div class="partner-row"><span>Status</span><span class="badge ${rem>0?'b-red':'b-green'}">${rem>0.5?'⚠ Pending':(rem<-0.5?'➕ Advance Paid':'✅ Clear')}</span></div>
     </div>`;
   }).join('');
+  renderPartnerOpeningLedger();
+}
+
+// ===== PARTNER OPENING LEDGERS (Excel sheets se, jaisa hai waisa) =====
+const PARTNER_LEDGERS = {"sohail": [{"sr": 1, "d": "25-12-2022", "desc": "CASH PAID", "cr": 3000000}, {"sr": 2, "d": "18-01-2023", "desc": "CASH PAID", "cr": 2000000}, {"sr": 3, "d": "15-02-2023", "desc": "CASH PAID", "cr": 4000000}, {"sr": 4, "d": "10-03-2023", "desc": "CASH PAID", "cr": 3500000}, {"sr": 5, "d": "14-04-2023", "desc": "CASH PAID", "cr": 5000000}, {"sr": 6, "d": "05-05-2023", "desc": "CASH PAID", "cr": 2500000}, {"sr": 7, "d": "20-06-2023", "desc": "CASH PAID", "cr": 5249030}, {"sr": 8, "d": "10 JULY 23", "desc": "DOCUMENTS AGAINST PAYMENTS", "cr": 14284675}, {"sr": 9, "d": "23 JULY 23", "desc": "CASH PAID", "cr": 9000000}, {"sr": 10, "d": "12 AUG 23", "desc": "CASH PAID", "cr": 5875000}, {"sr": 11, "d": "09 SEP 24", "desc": "CASH PAID", "cr": 3750000}, {"sr": 12, "d": "04 OCT 23", "desc": "CASH PAID", "cr": 5000000}, {"sr": 13, "d": "20 NOV 23", "desc": "CASH PAID", "cr": 3800000}, {"sr": 14, "d": "16 DEC 23", "desc": "CASH PAID", "cr": 5700000}, {"sr": 15, "d": "18 JAN 24", "desc": "CASH PAID", "cr": 3300000}, {"sr": 16, "d": "19 FEB 24", "desc": "CASH PAID", "cr": 2197048}, {"sr": 17, "d": "10 MAR 24", "desc": "PAID BY AGAINST STEEL", "cr": 35000000}, {"sr": 18, "d": "25 MAR 24", "desc": "CASH PAID", "cr": 6592299}, {"sr": 19, "d": "", "desc": "CASH PAID", "cr": null}, {"sr": 20, "d": "05 APRIL 24", "desc": "PAID BY AGAINST STEEL", "cr": 20000000}, {"sr": 21, "d": "19APRIL 24", "desc": "CASH PAID", "cr": 585198}, {"sr": 22, "d": "20 APRIL 24", "desc": "PAID BY AGAINST STEEL", "cr": 25000000}, {"sr": 23, "d": "14 MAY 24", "desc": "CASH PAID", "cr": 317634}, {"sr": 24, "d": "05 JUN 24", "desc": "PAID BY AGAINST STEEL", "cr": 27176900}, {"sr": 25, "d": "16 JUN 24", "desc": "CASH PAID", "cr": 8161488}, {"sr": 26, "d": "20 JULY 24", "desc": "CASH PAID", "cr": 2701649}, {"sr": 27, "d": "06 AUG 24", "desc": "PAID BY AGAINST STEEL", "cr": 7821777}, {"sr": 28, "d": "19 AUG 24", "desc": "CASH PAID", "cr": 32589}, {"sr": 29, "d": "09 SEP 24", "desc": "CASH PAID", "cr": 12148604}, {"sr": 30, "d": "10 OCT 24", "desc": "CASH PAID", "cr": 7580454}, {"sr": 31, "d": "18 NOV 24", "desc": "CASH PAID", "cr": 357818}, {"sr": 32, "d": "22 DEC 24", "desc": "CASH PAID", "cr": 5722584}, {"sr": 33, "d": "04 JAN 25", "desc": "PAID BY JAVAID", "cr": 32651253}], "razzaq": [{"d": "", "desc": "PAYMENT DUE TO RAZZAQ BHAI AT SEP 25", "dr": null, "cr": null}, {"d": "", "desc": "JAVEED BHAI SHARE 5% PAYABLE BHAI RAZZAQ BHAI AFTER 2 YEARS", "dr": null, "cr": 16325640}, {"d": "", "desc": "5% SHARE RAZZAQ BHAI TRANSFER TO CONSTRUCTION", "dr": null, "cr": 5571533}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST STEEL AND CBC CHALLAN CASH", "dr": null, "cr": 600000}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY", "dr": null, "cr": 1250000}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST 314 TON STEEL", "dr": null, "cr": 3092900}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST DOCUMENTATION", "dr": null, "cr": 1428467}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY  AND CONSTRUCTION", "dr": null, "cr": 819665}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 250000}, {"d": "", "desc": "PAYMENT RECEVIED", "dr": null, "cr": 2350000}, {"d": "10-07-2024", "desc": "PAYMENT RECIVED AGAINST RTGS 12000000 PAYMENT REC 9000000", "dr": null, "cr": 9000000}, {"d": "04/10/2024", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 500000}, {"d": "", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 1459000}, {"d": "13-12-2024", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 1100000}, {"d": "13-12-2024", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION STEEL PAYMENT", "dr": null, "cr": 600000}, {"d": "12-02-2025", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 624000}], "ummah": [{"head": "Construction", "d": "15-10-2024", "desc": "PAYMENT DUE TO UMMAH WELFARE 30% AT MAY JUN & JULY 2025", "v": "", "cr": null}, {"head": "Construction", "d": "14-09-2023", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION 14-09-2023 RTGS", "v": "1869", "cr": 11860111}, {"head": "Construction", "d": "04-12-2023", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION FOR STEEL 04-12-2023 RTGS", "v": "1838", "cr": 5000000}, {"head": "Construction", "d": "", "desc": "5% SHARE UMMAH BALANCE TRANSFER TO CONSTRUCTION", "v": "", "cr": 571533}, {"head": "Construction", "d": "15-02-2024", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY 21-02-24 RTGS", "v": "1941", "cr": 5000000}, {"head": "Construction", "d": "23-02-2024", "desc": "PAYMENT RECEIVED AGAINST STEEL 23-02-24 RTGS", "v": "1942", "cr": 1600000}, {"head": "Construction", "d": "08-03-2024", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION 08-03-2024 RTGS", "v": "1943", "cr": 5000000}, {"head": "Construction", "d": "26-03-2024", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY 26-03-24 RTGS", "v": "1944", "cr": 3302663}, {"head": "Construction", "d": "04-04-2024", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION 04-04-2024 RTGS", "v": "1939", "cr": 1385499}, {"head": "Construction", "d": "16-08-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1958", "cr": 3713348}, {"head": "Construction", "d": "04-10-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1982", "cr": 1479000}, {"head": "Construction", "d": "13-11-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION RTGS", "v": "1988", "cr": 1401708}, {"head": "Construction", "d": "13-11-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION BY UMAIR CASH", "v": "2008", "cr": 3000000}, {"head": "Construction", "d": "13-12-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION RTGS", "v": "2009", "cr": 1290227}, {"head": "Construction", "d": "13-12-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION CASH", "v": "2010", "cr": 2500000}, {"head": "Construction", "d": "05-05-2025", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION CASH", "v": "2159", "cr": 1562241}, {"head": "Construction", "d": "16-08-2025", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION CASH", "v": "2160", "cr": 2346500}, {"head": "Steel", "d": "", "desc": "PAYMENT RECEIVED AGAINST DOCUMENTATION", "v": "", "cr": 5713870}, {"head": "Steel", "d": "06-05-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "2067", "cr": 20000000}, {"head": "Steel", "d": "12-07-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1956", "cr": 6868424}, {"head": "Steel", "d": "01-08-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1957", "cr": 11700000}, {"head": "Steel", "d": "12-09-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1983", "cr": 7100000}]};
+
+function plEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function buildPartnerLedgerHTML(pid){
+  const rows=PARTNER_LEDGERS[pid]||[];
+  const th='<th>';
+  let bal=0, html='', foot='';
+  if(pid==='sohail'){
+    let tot=0;
+    html=rows.map(r=>{bal+=r.cr||0;tot+=r.cr||0;
+      return `<tr><td>${r.sr||''}</td><td>${plEsc(r.d)||'—'}</td><td>${plEsc(r.desc)}</td><td class="text-green amount">${r.cr?'Rs. '+fmt(r.cr):''}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;}).join('');
+    foot=`<tr><td colspan="3">GRAND TOTAL</td><td class="text-green amount">Rs. ${fmt(tot)}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;
+    return {total:bal,table:`<table><thead><tr><th>Sr</th><th>Date</th><th>Description</th><th>Credit</th><th>Balance</th></tr></thead><tbody>${html}</tbody><tfoot>${foot}</tfoot></table>`};
+  }
+  if(pid==='razzaq'){
+    let td=0,tc=0;
+    html=rows.map(r=>{bal+=(r.dr||0)-(r.cr||0);td+=r.dr||0;tc+=r.cr||0;
+      return `<tr><td>${plEsc(r.d)||'—'}</td><td>${plEsc(r.desc)}</td><td class="text-red amount">${r.dr?'Rs. '+fmt(r.dr):''}</td><td class="text-green amount">${r.cr?'Rs. '+fmt(r.cr):''}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;}).join('');
+    foot=`<tr><td colspan="2">TOTAL</td><td class="text-red amount">Rs. ${fmt(td)}</td><td class="text-green amount">Rs. ${fmt(tc)}</td><td class="amount">Rs. ${fmt(td-tc)}</td></tr>`;
+    return {total:tc,table:`<table><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead><tbody>${html}</tbody><tfoot>${foot}</tfoot></table>`};
+  }
+  // ummah: Construction + Steel ek hi ledger
+  let tot=0,tCons=0,tSteel=0;
+  html=rows.map(r=>{bal+=r.cr||0;tot+=r.cr||0;if(r.head==='Steel')tSteel+=r.cr||0;else tCons+=r.cr||0;
+    return `<tr><td>${plEsc(r.d)||'—'}</td><td><span class="badge ${r.head==='Steel'?'b-blue':'b-gold'}">${r.head}</span></td><td>${plEsc(r.desc)}</td><td>${plEsc(r.v)||'—'}</td><td class="text-green amount">${r.cr?'Rs. '+fmt(r.cr):''}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;}).join('');
+  foot=`<tr><td colspan="4">Construction: Rs. ${fmt(tCons)} &nbsp;+&nbsp; Steel: Rs. ${fmt(tSteel)}</td><td class="text-green amount">Rs. ${fmt(tot)}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;
+  return {total:tot,table:`<table><thead><tr><th>Date</th><th>Head</th><th>Description</th><th>Voucher</th><th>Credit</th><th>Balance</th></tr></thead><tbody>${html}</tbody><tfoot>${foot}</tfoot></table>`};
+}
+
+function renderPartnerOpeningLedger(){
+  const sel=document.getElementById('pl-select'), body=document.getElementById('pl-body');
+  if(!sel||!body) return;
+  const ids=D.partnerDefs.map(p=>p.id).filter(id=>PARTNER_LEDGERS[id]);
+  const cur=sel.value;
+  sel.innerHTML=ids.map(id=>`<option value="${id}">${plEsc(getPartnerName(id))}</option>`).join('');
+  if(ids.includes(cur)) sel.value=cur;
+  const pid=sel.value;
+  if(!pid){body.innerHTML='<div class="empty">Ledger nahi mila</div>';return;}
+  const r=buildPartnerLedgerHTML(pid);
+  const sysOpen=D.partnerOpening[pid]||0, diff=sysOpen-r.total;
+  body.innerHTML=`<div class="ob-summary">
+      <div class="ob-chip">Ledger Total: <span>Rs. ${fmt(r.total)}</span></div>
+      <div class="ob-chip">System Opening Balance: <span>Rs. ${fmt(sysOpen)}</span></div>
+      <div class="ob-chip">Farq: <span class="${Math.abs(diff)<1?'text-green':'text-red'}">Rs. ${fmt(diff)}</span></div>
+    </div><div class="tbl-wrap">${r.table}</div>`;
+}
+
+function printPartnerOpeningLedger(){
+  const pid=document.getElementById('pl-select')?.value; if(!pid) return;
+  const r=buildPartnerLedgerHTML(pid);
+  const w=window.open('','_blank','width=1000,height=700');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${plEsc(getPartnerName(pid))} Ledger</title><style>body{font-family:Arial,sans-serif;padding:20px;}h2{text-align:center;margin-bottom:14px;}table{width:100%;border-collapse:collapse;font-size:12px;}th,td{border:1px solid #bbb;padding:5px 8px;text-align:left;}th{background:#0f1f3d;color:#fff;}.amount{text-align:right;font-weight:bold;}tfoot td{font-weight:bold;background:#eee;}</style></head><body><h2>${plEsc(D.settings.company||'')} — ${plEsc(getPartnerName(pid))} Ledger</h2>${r.table}</body></html>`);
+  w.document.close(); w.onload=()=>{w.focus();w.print();};
 }
 
 function savePartnerEntry(){
