@@ -643,9 +643,9 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
   <!-- Partner Opening Ledgers (Excel se) -->
   <div class="card" id="partner-ledger-box">
     <div class="card-header">
-      <h3>📒 Partner Opening Ledger</h3>
+      <h3>👥 Partners Ledger — Partner-wise Hisaab</h3>
       <div style="display:flex;gap:8px;">
-        <select id="pl-select" class="filter-sel" onchange="renderPartnerOpeningLedger()"></select>
+        <select id="pl-select" style="display:none" onchange="renderPartnerOpeningLedger()"></select>
         <button class="btn btn-navy btn-sm no-print" onclick="printPartnerOpeningLedger()">🖨️ Print</button>
       </div>
     </div>
@@ -704,7 +704,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
 
   <div class="card">
     <div class="card-header">
-      <h3>📒 Partner Ledger</h3>
+      <h3>📒 Partner Payment Entries (Naye Payments)</h3>
       <div style="display:flex;gap:8px;">
         <select id="pt-filter" onchange="renderPartnerLedger()" class="filter-sel"><option value="all">All Partners</option></select>
         <button class="btn btn-navy btn-sm no-print" onclick="printSection('partners')">🖨️ Print</button>
@@ -713,7 +713,7 @@ tfoot td{padding:10px 12px;border-top:2px solid var(--border);}
     <div class="card-body">
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>#</th><th>Date</th><th>Partner</th><th>Description</th><th>Mode</th><th>Debit</th><th>Credit</th><th>Balance</th><th class="no-print">Del</th></tr></thead>
+          <thead><tr><th>#</th><th>Date</th><th>Partner</th><th>Description</th><th>Mode</th><th>Debit</th><th>Credit</th><th>Closing</th><th class="no-print">Del</th></tr></thead>
           <tbody id="pt-tbody"></tbody>
         </table>
       </div>
@@ -1284,6 +1284,7 @@ function showPage(p){
 }
 
 function renderAll(){
+  ensurePartnerLedgers();
   refreshCats();
   renderExpenseForm();
   updateMonthBadge();
@@ -2437,7 +2438,7 @@ function renderOpeningBalance(){
   pob.innerHTML='<div class="form-grid">'+D.partnerDefs.map(p=>`
     <div class="form-group">
       <label>${p.name} (${p.share}%)</label>
-      <input type="number" id="pob-${p.id}" placeholder="0" value="${D.partnerOpening[p.id]||0}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;">
+      <input type="number" id="pob-${p.id}" ${Array.isArray((D.partnerLedgers||{})[p.id])?'readonly title="Ledger se aata hai (Partners tab)"':''} placeholder="0" value="${D.partnerOpening[p.id]||0}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;">
     </div>`).join('')+'</div>';
 
   renderObSummary();
@@ -3049,67 +3050,138 @@ function renderPartnerCards(){
       <div class="partner-row"><span>Opening Paid</span><span class="amount text-blue">Rs. ${fmt(openPaid)}</span></div>
       <div class="partner-row"><span>New Payments</span><span class="amount text-green">Rs. ${fmt(newPaid)}</span></div>
       <div class="partner-row"><span>Total Paid</span><span class="amount text-green">Rs. ${fmt(paid)}</span></div>
-      <div class="partner-row"><span>Remaining</span><span class="amount ${rem>0?'text-red':'text-green'}">Rs. ${fmt(Math.abs(rem))}</span></div>
+      <div class="partner-row"><span>${pendLabel(rem)}</span><span class="amount ${rem>0?'text-red':'text-green'}">Rs. ${fmt(Math.abs(rem))}</span></div>
       <div class="partner-row"><span>Status</span><span class="badge ${rem>0?'b-red':'b-green'}">${rem>0.5?'⚠ Pending':(rem<-0.5?'➕ Advance Paid':'✅ Clear')}</span></div>
     </div>`;
   }).join('');
   renderPartnerOpeningLedger();
 }
 
-// ===== PARTNER OPENING LEDGERS (Excel sheets se, jaisa hai waisa) =====
-const PARTNER_LEDGERS = {"sohail": [{"sr": 1, "d": "25-12-2022", "desc": "CASH PAID", "cr": 3000000}, {"sr": 2, "d": "18-01-2023", "desc": "CASH PAID", "cr": 2000000}, {"sr": 3, "d": "15-02-2023", "desc": "CASH PAID", "cr": 4000000}, {"sr": 4, "d": "10-03-2023", "desc": "CASH PAID", "cr": 3500000}, {"sr": 5, "d": "14-04-2023", "desc": "CASH PAID", "cr": 5000000}, {"sr": 6, "d": "05-05-2023", "desc": "CASH PAID", "cr": 2500000}, {"sr": 7, "d": "20-06-2023", "desc": "CASH PAID", "cr": 5249030}, {"sr": 8, "d": "10 JULY 23", "desc": "DOCUMENTS AGAINST PAYMENTS", "cr": 14284675}, {"sr": 9, "d": "23 JULY 23", "desc": "CASH PAID", "cr": 9000000}, {"sr": 10, "d": "12 AUG 23", "desc": "CASH PAID", "cr": 5875000}, {"sr": 11, "d": "09 SEP 24", "desc": "CASH PAID", "cr": 3750000}, {"sr": 12, "d": "04 OCT 23", "desc": "CASH PAID", "cr": 5000000}, {"sr": 13, "d": "20 NOV 23", "desc": "CASH PAID", "cr": 3800000}, {"sr": 14, "d": "16 DEC 23", "desc": "CASH PAID", "cr": 5700000}, {"sr": 15, "d": "18 JAN 24", "desc": "CASH PAID", "cr": 3300000}, {"sr": 16, "d": "19 FEB 24", "desc": "CASH PAID", "cr": 2197048}, {"sr": 17, "d": "10 MAR 24", "desc": "PAID BY AGAINST STEEL", "cr": 35000000}, {"sr": 18, "d": "25 MAR 24", "desc": "CASH PAID", "cr": 6592299}, {"sr": 19, "d": "", "desc": "CASH PAID", "cr": null}, {"sr": 20, "d": "05 APRIL 24", "desc": "PAID BY AGAINST STEEL", "cr": 20000000}, {"sr": 21, "d": "19APRIL 24", "desc": "CASH PAID", "cr": 585198}, {"sr": 22, "d": "20 APRIL 24", "desc": "PAID BY AGAINST STEEL", "cr": 25000000}, {"sr": 23, "d": "14 MAY 24", "desc": "CASH PAID", "cr": 317634}, {"sr": 24, "d": "05 JUN 24", "desc": "PAID BY AGAINST STEEL", "cr": 27176900}, {"sr": 25, "d": "16 JUN 24", "desc": "CASH PAID", "cr": 8161488}, {"sr": 26, "d": "20 JULY 24", "desc": "CASH PAID", "cr": 2701649}, {"sr": 27, "d": "06 AUG 24", "desc": "PAID BY AGAINST STEEL", "cr": 7821777}, {"sr": 28, "d": "19 AUG 24", "desc": "CASH PAID", "cr": 32589}, {"sr": 29, "d": "09 SEP 24", "desc": "CASH PAID", "cr": 12148604}, {"sr": 30, "d": "10 OCT 24", "desc": "CASH PAID", "cr": 7580454}, {"sr": 31, "d": "18 NOV 24", "desc": "CASH PAID", "cr": 357818}, {"sr": 32, "d": "22 DEC 24", "desc": "CASH PAID", "cr": 5722584}, {"sr": 33, "d": "04 JAN 25", "desc": "PAID BY JAVAID", "cr": 32651253}], "razzaq": [{"d": "", "desc": "PAYMENT DUE TO RAZZAQ BHAI AT SEP 25", "dr": null, "cr": null}, {"d": "", "desc": "JAVEED BHAI SHARE 5% PAYABLE BHAI RAZZAQ BHAI AFTER 2 YEARS", "dr": null, "cr": 16325640}, {"d": "", "desc": "5% SHARE RAZZAQ BHAI TRANSFER TO CONSTRUCTION", "dr": null, "cr": 5571533}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST STEEL AND CBC CHALLAN CASH", "dr": null, "cr": 600000}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY", "dr": null, "cr": 1250000}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST 314 TON STEEL", "dr": null, "cr": 3092900}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST DOCUMENTATION", "dr": null, "cr": 1428467}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY  AND CONSTRUCTION", "dr": null, "cr": 819665}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 250000}, {"d": "", "desc": "PAYMENT RECEVIED", "dr": null, "cr": 2350000}, {"d": "10-07-2024", "desc": "PAYMENT RECIVED AGAINST RTGS 12000000 PAYMENT REC 9000000", "dr": null, "cr": 9000000}, {"d": "04/10/2024", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 500000}, {"d": "", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 1459000}, {"d": "13-12-2024", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 1100000}, {"d": "13-12-2024", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION STEEL PAYMENT", "dr": null, "cr": 600000}, {"d": "12-02-2025", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 624000}], "ummah": [{"head": "Construction", "d": "15-10-2024", "desc": "PAYMENT DUE TO UMMAH WELFARE 30% AT MAY JUN & JULY 2025", "v": "", "cr": null}, {"head": "Construction", "d": "14-09-2023", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION 14-09-2023 RTGS", "v": "1869", "cr": 11860111}, {"head": "Construction", "d": "04-12-2023", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION FOR STEEL 04-12-2023 RTGS", "v": "1838", "cr": 5000000}, {"head": "Construction", "d": "", "desc": "5% SHARE UMMAH BALANCE TRANSFER TO CONSTRUCTION", "v": "", "cr": 571533}, {"head": "Construction", "d": "15-02-2024", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY 21-02-24 RTGS", "v": "1941", "cr": 5000000}, {"head": "Construction", "d": "23-02-2024", "desc": "PAYMENT RECEIVED AGAINST STEEL 23-02-24 RTGS", "v": "1942", "cr": 1600000}, {"head": "Construction", "d": "08-03-2024", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION 08-03-2024 RTGS", "v": "1943", "cr": 5000000}, {"head": "Construction", "d": "26-03-2024", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY 26-03-24 RTGS", "v": "1944", "cr": 3302663}, {"head": "Construction", "d": "04-04-2024", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION 04-04-2024 RTGS", "v": "1939", "cr": 1385499}, {"head": "Construction", "d": "16-08-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1958", "cr": 3713348}, {"head": "Construction", "d": "04-10-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1982", "cr": 1479000}, {"head": "Construction", "d": "13-11-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION RTGS", "v": "1988", "cr": 1401708}, {"head": "Construction", "d": "13-11-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION BY UMAIR CASH", "v": "2008", "cr": 3000000}, {"head": "Construction", "d": "13-12-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION RTGS", "v": "2009", "cr": 1290227}, {"head": "Construction", "d": "13-12-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION CASH", "v": "2010", "cr": 2500000}, {"head": "Construction", "d": "05-05-2025", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION CASH", "v": "2159", "cr": 1562241}, {"head": "Construction", "d": "16-08-2025", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION CASH", "v": "2160", "cr": 2346500}, {"head": "Steel", "d": "", "desc": "PAYMENT RECEIVED AGAINST DOCUMENTATION", "v": "", "cr": 5713870}, {"head": "Steel", "d": "06-05-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "2067", "cr": 20000000}, {"head": "Steel", "d": "12-07-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1956", "cr": 6868424}, {"head": "Steel", "d": "01-08-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1957", "cr": 11700000}, {"head": "Steel", "d": "12-09-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1983", "cr": 7100000}]};
+// ===== PARTNER OPENING LEDGERS (editable, har partner ka apna ledger) =====
+// Closing = Credit - Debit (hamesha plus mein). Ledger ka closing = "Opening Paid".
+const PARTNER_LEDGER_SEED = {"sohail": [{"d": "25-12-2022", "desc": "CASH PAID", "dr": null, "cr": 3000000}, {"d": "18-01-2023", "desc": "CASH PAID", "dr": null, "cr": 2000000}, {"d": "15-02-2023", "desc": "CASH PAID", "dr": null, "cr": 4000000}, {"d": "10-03-2023", "desc": "CASH PAID", "dr": null, "cr": 3500000}, {"d": "14-04-2023", "desc": "CASH PAID", "dr": null, "cr": 5000000}, {"d": "05-05-2023", "desc": "CASH PAID", "dr": null, "cr": 2500000}, {"d": "20-06-2023", "desc": "CASH PAID", "dr": null, "cr": 5249030}, {"d": "10 JULY 23", "desc": "DOCUMENTS AGAINST PAYMENTS", "dr": null, "cr": 14284675}, {"d": "23 JULY 23", "desc": "CASH PAID", "dr": null, "cr": 9000000}, {"d": "12 AUG 23", "desc": "CASH PAID", "dr": null, "cr": 5875000}, {"d": "09 SEP 24", "desc": "CASH PAID", "dr": null, "cr": 3750000}, {"d": "04 OCT 23", "desc": "CASH PAID", "dr": null, "cr": 5000000}, {"d": "20 NOV 23", "desc": "CASH PAID", "dr": null, "cr": 3800000}, {"d": "16 DEC 23", "desc": "CASH PAID", "dr": null, "cr": 5700000}, {"d": "18 JAN 24", "desc": "CASH PAID", "dr": null, "cr": 3300000}, {"d": "19 FEB 24", "desc": "CASH PAID", "dr": null, "cr": 2197048}, {"d": "10 MAR 24", "desc": "PAID BY AGAINST STEEL", "dr": null, "cr": 35000000}, {"d": "25 MAR 24", "desc": "CASH PAID", "dr": null, "cr": 6592299}, {"d": "", "desc": "CASH PAID", "dr": null, "cr": null}, {"d": "05 APRIL 24", "desc": "PAID BY AGAINST STEEL", "dr": null, "cr": 20000000}, {"d": "19APRIL 24", "desc": "CASH PAID", "dr": null, "cr": 585198}, {"d": "20 APRIL 24", "desc": "PAID BY AGAINST STEEL", "dr": null, "cr": 25000000}, {"d": "14 MAY 24", "desc": "CASH PAID", "dr": null, "cr": 317634}, {"d": "05 JUN 24", "desc": "PAID BY AGAINST STEEL", "dr": null, "cr": 27176900}, {"d": "16 JUN 24", "desc": "CASH PAID", "dr": null, "cr": 8161488}, {"d": "20 JULY 24", "desc": "CASH PAID", "dr": null, "cr": 2701649}, {"d": "06 AUG 24", "desc": "PAID BY AGAINST STEEL", "dr": null, "cr": 7821777}, {"d": "19 AUG 24", "desc": "CASH PAID", "dr": null, "cr": 32589}, {"d": "09 SEP 24", "desc": "CASH PAID", "dr": null, "cr": 12148604}, {"d": "10 OCT 24", "desc": "CASH PAID", "dr": null, "cr": 7580454}, {"d": "18 NOV 24", "desc": "CASH PAID", "dr": null, "cr": 357818}, {"d": "22 DEC 24", "desc": "CASH PAID", "dr": null, "cr": 5722584}, {"d": "04 JAN 25", "desc": "PAID BY JAVAID", "dr": null, "cr": 32651253}], "razzaq": [{"d": "", "desc": "PAYMENT DUE TO RAZZAQ BHAI AT SEP 25", "dr": null, "cr": null}, {"d": "", "desc": "JAVEED BHAI SHARE 5% PAYABLE BHAI RAZZAQ BHAI AFTER 2 YEARS", "dr": null, "cr": 16325640}, {"d": "", "desc": "5% SHARE RAZZAQ BHAI TRANSFER TO CONSTRUCTION", "dr": null, "cr": 5571533}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST STEEL AND CBC CHALLAN CASH", "dr": null, "cr": 600000}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY", "dr": null, "cr": 1250000}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST 314 TON STEEL", "dr": null, "cr": 3092900}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST DOCUMENTATION", "dr": null, "cr": 1428467}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY  AND CONSTRUCTION", "dr": null, "cr": 819665}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 250000}, {"d": "", "desc": "PAYMENT RECEVIED", "dr": null, "cr": 2350000}, {"d": "10-07-2024", "desc": "PAYMENT RECIVED AGAINST RTGS 12000000 PAYMENT REC 9000000", "dr": null, "cr": 9000000}, {"d": "04/10/2024", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 500000}, {"d": "", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 1459000}, {"d": "13-12-2024", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 1100000}, {"d": "13-12-2024", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION STEEL PAYMENT", "dr": null, "cr": 600000}, {"d": "12-02-2025", "desc": "PAYMENT REEIVED AGAINST CONSTRUCTION", "dr": null, "cr": 624000}], "ummah": [{"d": "15-10-2024", "desc": "PAYMENT DUE TO UMMAH WELFARE 30% AT MAY JUN & JULY 2025", "v": "", "head": "Construction", "dr": null, "cr": null}, {"d": "14-09-2023", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION 14-09-2023 RTGS", "v": "1869", "head": "Construction", "dr": null, "cr": 11860111}, {"d": "04-12-2023", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION FOR STEEL 04-12-2023 RTGS", "v": "1838", "head": "Construction", "dr": null, "cr": 5000000}, {"d": "", "desc": "5% SHARE UMMAH BALANCE TRANSFER TO CONSTRUCTION", "v": "", "head": "Construction", "dr": null, "cr": 571533}, {"d": "15-02-2024", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY 21-02-24 RTGS", "v": "1941", "head": "Construction", "dr": null, "cr": 5000000}, {"d": "23-02-2024", "desc": "PAYMENT RECEIVED AGAINST STEEL 23-02-24 RTGS", "v": "1942", "head": "Construction", "dr": null, "cr": 1600000}, {"d": "08-03-2024", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION 08-03-2024 RTGS", "v": "1943", "head": "Construction", "dr": null, "cr": 5000000}, {"d": "26-03-2024", "desc": "PAYMENT RECEIVED AGAINST SPEED MONEY 26-03-24 RTGS", "v": "1944", "head": "Construction", "dr": null, "cr": 3302663}, {"d": "04-04-2024", "desc": "PAYMENT RECEIVED AGAINST CONSTRUCTION 04-04-2024 RTGS", "v": "1939", "head": "Construction", "dr": null, "cr": 1385499}, {"d": "16-08-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1958", "head": "Construction", "dr": null, "cr": 3713348}, {"d": "04-10-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1982", "head": "Construction", "dr": null, "cr": 1479000}, {"d": "13-11-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION RTGS", "v": "1988", "head": "Construction", "dr": null, "cr": 1401708}, {"d": "13-11-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION BY UMAIR CASH", "v": "2008", "head": "Construction", "dr": null, "cr": 3000000}, {"d": "13-12-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION RTGS", "v": "2009", "head": "Construction", "dr": null, "cr": 1290227}, {"d": "13-12-2024", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION CASH", "v": "2010", "head": "Construction", "dr": null, "cr": 2500000}, {"d": "05-05-2025", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION CASH", "v": "2159", "head": "Construction", "dr": null, "cr": 1562241}, {"d": "16-08-2025", "desc": "PAYMENT RECIVED AGAINST CONSTRUCTION CASH", "v": "2160", "head": "Construction", "dr": null, "cr": 2346500}, {"d": "", "desc": "PAYMENT RECEIVED AGAINST DOCUMENTATION", "v": "", "head": "Steel", "dr": null, "cr": 5713870}, {"d": "06-05-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "2067", "head": "Steel", "dr": null, "cr": 20000000}, {"d": "12-07-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1956", "head": "Steel", "dr": null, "cr": 6868424}, {"d": "01-08-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1957", "head": "Steel", "dr": null, "cr": 11700000}, {"d": "12-09-2024", "desc": "PAYMENT RECIVED AGAINST RTGS", "v": "1983", "head": "Steel", "dr": null, "cr": 7100000}]};
 
 function plEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function pendLabel(rem){return rem>0.5?'Pending':(rem<-0.5?'Advance Paid':'Clear');}
+function ledgerRows(pid){return (D.partnerLedgers&&D.partnerLedgers[pid])||[];}
+function ledgerClosing(pid){return ledgerRows(pid).reduce((s,r)=>s+(Number(r.cr)||0)-(Number(r.dr)||0),0);}
 
-function buildPartnerLedgerHTML(pid){
-  const rows=PARTNER_LEDGERS[pid]||[];
-  const th='<th>';
-  let bal=0, html='', foot='';
-  if(pid==='sohail'){
-    let tot=0;
-    html=rows.map(r=>{bal+=r.cr||0;tot+=r.cr||0;
-      return `<tr><td>${r.sr||''}</td><td>${plEsc(r.d)||'—'}</td><td>${plEsc(r.desc)}</td><td class="text-green amount">${r.cr?'Rs. '+fmt(r.cr):''}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;}).join('');
-    foot=`<tr><td colspan="3">GRAND TOTAL</td><td class="text-green amount">Rs. ${fmt(tot)}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;
-    return {total:bal,table:`<table><thead><tr><th>Sr</th><th>Date</th><th>Description</th><th>Credit</th><th>Balance</th></tr></thead><tbody>${html}</tbody><tfoot>${foot}</tfoot></table>`};
-  }
-  if(pid==='razzaq'){
-    let td=0,tc=0;
-    html=rows.map(r=>{bal+=(r.dr||0)-(r.cr||0);td+=r.dr||0;tc+=r.cr||0;
-      return `<tr><td>${plEsc(r.d)||'—'}</td><td>${plEsc(r.desc)}</td><td class="text-red amount">${r.dr?'Rs. '+fmt(r.dr):''}</td><td class="text-green amount">${r.cr?'Rs. '+fmt(r.cr):''}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;}).join('');
-    foot=`<tr><td colspan="2">TOTAL</td><td class="text-red amount">Rs. ${fmt(td)}</td><td class="text-green amount">Rs. ${fmt(tc)}</td><td class="amount">Rs. ${fmt(td-tc)}</td></tr>`;
-    return {total:tc,table:`<table><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead><tbody>${html}</tbody><tfoot>${foot}</tfoot></table>`};
-  }
-  // ummah: Construction + Steel ek hi ledger
-  let tot=0,tCons=0,tSteel=0;
-  html=rows.map(r=>{bal+=r.cr||0;tot+=r.cr||0;if(r.head==='Steel')tSteel+=r.cr||0;else tCons+=r.cr||0;
-    return `<tr><td>${plEsc(r.d)||'—'}</td><td><span class="badge ${r.head==='Steel'?'b-blue':'b-gold'}">${r.head}</span></td><td>${plEsc(r.desc)}</td><td>${plEsc(r.v)||'—'}</td><td class="text-green amount">${r.cr?'Rs. '+fmt(r.cr):''}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;}).join('');
-  foot=`<tr><td colspan="4">Construction: Rs. ${fmt(tCons)} &nbsp;+&nbsp; Steel: Rs. ${fmt(tSteel)}</td><td class="text-green amount">Rs. ${fmt(tot)}</td><td class="amount">Rs. ${fmt(bal)}</td></tr>`;
-  return {total:tot,table:`<table><thead><tr><th>Date</th><th>Head</th><th>Description</th><th>Voucher</th><th>Credit</th><th>Balance</th></tr></thead><tbody>${html}</tbody><tfoot>${foot}</tfoot></table>`};
+// Ledger closing -> partner Opening Paid (archived months ko bhi cascade, jaise Opening Balance save karta hai)
+function applyLedgerOpening(){
+  if(!D.partnerLedgers) return;
+  const ids=D.partnerDefs.map(p=>p.id).filter(id=>Array.isArray(D.partnerLedgers[id]));
+  if(!ids.length) return;
+  const prev={}; ids.forEach(id=>prev[id]=ledgerClosing(id));
+  const sorted=[...(D.monthArchive||[])].sort((a,b)=>a.month.localeCompare(b.month));
+  sorted.forEach(arc=>{
+    const idx=D.monthArchive.findIndex(a=>a.month===arc.month);
+    D.monthArchive[idx].partnerOpening={...(arc.partnerOpening||{}),...prev};
+    ids.forEach(id=>{
+      prev[id]+=(arc.partners||[]).filter(x=>x.partner===id&&x.type==='payment').reduce((s,x)=>s+Number(x.amount),0);
+    });
+  });
+  ids.forEach(id=>{D.partnerOpening[id]=prev[id];});
+}
+
+function ensurePartnerLedgers(){
+  if(D.partnerLedgers) return;
+  D.partnerLedgers={};
+  Object.keys(PARTNER_LEDGER_SEED).forEach(id=>{
+    D.partnerLedgers[id]=PARTNER_LEDGER_SEED[id].map((r,i)=>({id:'pl_'+id+'_'+i,...r}));
+  });
+  applyLedgerOpening();
+  saveDB();
+}
+
+function afterLedgerChange(){applyLedgerOpening();saveDB();renderDashboard();renderPartnerCards();}
+
+function savePartnerLedgerRow(){
+  const pid=document.getElementById('pl-select').value; if(!pid) return;
+  const g=id=>(document.getElementById(id).value||'').trim();
+  const dr=Number(g('pl-dr'))||0, cr=Number(g('pl-cr'))||0;
+  if(!dr&&!cr){alert('Debit ya Credit amount likhein!');return;}
+  if(!D.partnerLedgers) D.partnerLedgers={};
+  if(!Array.isArray(D.partnerLedgers[pid])) D.partnerLedgers[pid]=[];
+  D.partnerLedgers[pid].push({id:'pl'+Date.now(),d:g('pl-d'),desc:g('pl-desc'),v:g('pl-v'),head:g('pl-head'),dr:dr||null,cr:cr||null});
+  afterLedgerChange();
+}
+
+function deletePartnerLedgerRow(pid,id){
+  if(!confirm('Delete?')) return;
+  D.partnerLedgers[pid]=ledgerRows(pid).filter(r=>r.id!==id);
+  afterLedgerChange();
+}
+
+function buildPartnerLedgerHTML(pid,editable){
+  const rows=ledgerRows(pid);
+  const heads=rows.some(r=>r.head), vch=rows.some(r=>r.v);
+  let bal=0,td=0,tc=0; const sub={};
+  const body=rows.map((r,i)=>{
+    const dr=Number(r.dr)||0, cr=Number(r.cr)||0;
+    bal+=cr-dr; td+=dr; tc+=cr;
+    if(r.head) sub[r.head]=(sub[r.head]||0)+cr-dr;
+    return `<tr><td>${i+1}</td><td>${plEsc(r.d)||'—'}</td>`
+      +(heads?`<td>${r.head?`<span class="badge ${r.head==='Steel'?'b-blue':'b-gold'}">${plEsc(r.head)}</span>`:''}</td>`:'')
+      +`<td>${plEsc(r.desc)}</td>`
+      +(vch?`<td>${plEsc(r.v)||'—'}</td>`:'')
+      +`<td class="text-red amount">${dr?'Rs. '+fmt(dr):''}</td><td class="text-green amount">${cr?'Rs. '+fmt(cr):''}</td><td class="amount">Rs. ${fmt(bal)}</td>`
+      +(editable?`<td class="no-print"><button class="btn btn-red btn-xs" onclick="deletePartnerLedgerRow('${pid}','${r.id}')">Del</button></td>`:'')
+      +`</tr>`;
+  }).join('');
+  const span=3+(heads?1:0)+(vch?1:0);
+  const foot=`<tr><td colspan="${span}">TOTAL</td><td class="text-red amount">Rs. ${fmt(td)}</td><td class="text-green amount">Rs. ${fmt(tc)}</td><td class="amount">Rs. ${fmt(bal)}</td>${editable?'<td class="no-print"></td>':''}</tr>`;
+  const table=`<table><thead><tr><th>#</th><th>Date</th>${heads?'<th>Head</th>':''}<th>Description</th>${vch?'<th>Voucher</th>':''}<th>Debit</th><th>Credit</th><th>Closing</th>${editable?'<th class="no-print">Del</th>':''}</tr></thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table>`;
+  const subTxt=Object.keys(sub).length?Object.keys(sub).map(k=>`${plEsc(k)}: Rs. ${fmt(sub[k])}`).join(' &nbsp;+&nbsp; '):'';
+  return {closing:bal,table,subTxt,count:rows.length};
 }
 
 function renderPartnerOpeningLedger(){
-  const sel=document.getElementById('pl-select'), body=document.getElementById('pl-body');
-  if(!sel||!body) return;
-  const ids=D.partnerDefs.map(p=>p.id).filter(id=>PARTNER_LEDGERS[id]);
+  const sel=document.getElementById('pl-select'), box=document.getElementById('pl-body');
+  if(!sel||!box) return;
+  const ids=D.partnerDefs.map(p=>p.id);
   const cur=sel.value;
   sel.innerHTML=ids.map(id=>`<option value="${id}">${plEsc(getPartnerName(id))}</option>`).join('');
   if(ids.includes(cur)) sel.value=cur;
   const pid=sel.value;
-  if(!pid){body.innerHTML='<div class="empty">Ledger nahi mila</div>';return;}
-  const r=buildPartnerLedgerHTML(pid);
-  const sysOpen=D.partnerOpening[pid]||0, diff=sysOpen-r.total;
-  body.innerHTML=`<div class="ob-summary">
-      <div class="ob-chip">Ledger Total: <span>Rs. ${fmt(r.total)}</span></div>
-      <div class="ob-chip">System Opening Balance: <span>Rs. ${fmt(sysOpen)}</span></div>
-      <div class="ob-chip">Farq: <span class="${Math.abs(diff)<1?'text-green':'text-red'}">Rs. ${fmt(diff)}</span></div>
-    </div><div class="tbl-wrap">${r.table}</div>`;
+  if(!pid){box.innerHTML='<div class="empty">Koi partner nahi</div>';return;}
+  const r=buildPartnerLedgerHTML(pid,true);
+  const pd=D.partnerDefs.find(p=>p.id===pid)||{};
+  const tabs=`<div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">`
+    +ids.map(id=>`<button class="btn btn-sm ${id===pid?'btn-gold':'btn-navy'}" onclick="selectLedgerPartner('${id}')">👤 ${plEsc(getPartnerName(id))}</button>`).join('')+`</div>`;
+  const banner=`<div style="background:linear-gradient(135deg,var(--dark),var(--dark2));border-radius:14px;padding:16px 20px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div><div style="font-size:10px;color:rgba(212,175,90,.8);letter-spacing:1px;font-weight:700;">PARTNER LEDGER</div>
+        <div style="font-size:20px;font-weight:900;color:#fff;margin-top:2px;">${plEsc(pd.name||pid)}</div>
+        <div style="font-size:11.5px;color:rgba(212,175,90,.85);margin-top:2px;">Share: ${pd.share!=null?pd.share+'%':'—'} &nbsp;|&nbsp; ${r.count} entries</div></div>
+      <div style="text-align:right;"><div style="font-size:10px;color:rgba(212,175,90,.8);letter-spacing:1px;font-weight:700;">CLOSING BALANCE (PAID)</div>
+        <div style="font-size:24px;font-weight:900;color:var(--gold3);">Rs. ${fmt(r.closing)}</div>
+        ${r.subTxt?`<div style="font-size:11px;color:#fff;opacity:.85;margin-top:2px;">${r.subTxt}</div>`:''}</div>
+    </div>`;
+  box.innerHTML=tabs+banner
+    +(r.count?`<div class="tbl-wrap">${r.table}</div>`:'<div class="empty">Is partner ka ledger abhi khali hai. Neeche se entry add karein.</div>')
+    +`<div class="no-print" style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--border);">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;">➕ Ledger Entry Add Karein — ${plEsc(getPartnerName(pid))}</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Date</label><input type="text" id="pl-d" placeholder="DD-MM-YYYY"></div>
+        <div class="form-group"><label>Head (optional)</label><input type="text" id="pl-head" placeholder="e.g. Steel"></div>
+        <div class="form-group" style="grid-column:span 2;"><label>Description</label><input type="text" id="pl-desc" placeholder="Description"></div>
+        <div class="form-group"><label>Voucher (optional)</label><input type="text" id="pl-v"></div>
+        <div class="form-group"><label>Debit (Rs.)</label><input type="number" id="pl-dr" placeholder="0"></div>
+        <div class="form-group"><label>Credit (Rs.)</label><input type="number" id="pl-cr" placeholder="0"></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-gold" onclick="savePartnerLedgerRow()">💾 Save Ledger Entry</button></div>
+    </div>`;
+}
+
+function selectLedgerPartner(id){
+  const sel=document.getElementById('pl-select'); if(!sel) return;
+  sel.value=id; renderPartnerOpeningLedger();
 }
 
 function printPartnerOpeningLedger(){
   const pid=document.getElementById('pl-select')?.value; if(!pid) return;
-  const r=buildPartnerLedgerHTML(pid);
+  const r=buildPartnerLedgerHTML(pid,false);
   const w=window.open('','_blank','width=1000,height=700');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${plEsc(getPartnerName(pid))} Ledger</title><style>body{font-family:Arial,sans-serif;padding:20px;}h2{text-align:center;margin-bottom:14px;}table{width:100%;border-collapse:collapse;font-size:12px;}th,td{border:1px solid #bbb;padding:5px 8px;text-align:left;}th{background:#0f1f3d;color:#fff;}.amount{text-align:right;font-weight:bold;}tfoot td{font-weight:bold;background:#eee;}</style></head><body><h2>${plEsc(D.settings.company||'')} — ${plEsc(getPartnerName(pid))} Ledger</h2>${r.table}</body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${plEsc(getPartnerName(pid))} Ledger</title><style>body{font-family:Arial,sans-serif;padding:20px;}h2{text-align:center;margin-bottom:6px;}.sub{text-align:center;font-size:12px;margin-bottom:14px;color:#444;}table{width:100%;border-collapse:collapse;font-size:12px;}th,td{border:1px solid #bbb;padding:5px 8px;text-align:left;}th{background:#0f1f3d;color:#fff;}.amount{text-align:right;font-weight:bold;}tfoot td{font-weight:bold;background:#eee;}</style></head><body><h2>${plEsc(D.settings.company||'')}</h2><div class="sub">${plEsc(D.settings.address||'')}</div><h2 style="font-size:16px;border-top:2px solid #0f1f3d;border-bottom:2px solid #0f1f3d;padding:6px 0;">PARTNER LEDGER — ${plEsc(getPartnerName(pid))}${(D.partnerDefs.find(p=>p.id===pid)||{}).share!=null?' ('+D.partnerDefs.find(p=>p.id===pid).share+'% Share)':''}</h2><div class="sub">Closing Balance: <b>Rs. ${fmt(r.closing)}</b>${r.subTxt?' ('+r.subTxt+')':''} &nbsp;|&nbsp; Printed: ${new Date().toLocaleDateString('en-GB')}</div>${r.table}</body></html>`);
   w.document.close(); w.onload=()=>{w.focus();w.print();};
 }
 
@@ -4046,7 +4118,7 @@ function printSection(section){
         <div class="prow"><span>Opening Paid</span><span class="amount text-blue">Rs. ${fmt(openPaid)}</span></div>
         <div class="prow"><span>New Payments</span><span class="amount text-green">Rs. ${fmt(newPaid)}</span></div>
         <div class="prow"><span>Total Paid</span><span class="amount text-green">Rs. ${fmt(paid)}</span></div>
-        <div class="prow"><span>Remaining</span><span class="amount ${rem>0?'text-red':'text-green'}">Rs. ${fmt(Math.abs(rem))}</span></div>
+        <div class="prow"><span>${pendLabel(rem)}</span><span class="amount ${rem>0?'text-red':'text-green'}">Rs. ${fmt(Math.abs(rem))}</span></div>
       </div>`;
     }).join('');
     const partnerCalcRows=D.partnerDefs.map(p=>{
@@ -4067,7 +4139,7 @@ function printSection(section){
     <tbody>${partnerCalcRows}</tbody></table>
 
     <div class="section-title">📒 Partner Ledger Entries</div>
-    <table><thead><tr><th>#</th><th>Date</th><th>Partner</th><th>Description</th><th>Mode</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+    <table><thead><tr><th>#</th><th>Date</th><th>Partner</th><th>Description</th><th>Mode</th><th>Debit</th><th>Credit</th><th>Closing</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No entries</td></tr>'}</tbody></table>`;
 
   } else if(section==='catledger'){
