@@ -1180,7 +1180,7 @@ async function loadAll(){
         D=mergeDefaults(ld);
         // Archive aur activeMonth hamesha local se lo
         if(localArchive){ try{D.monthArchive=JSON.parse(localArchive);}catch(x){} }
-        if(localActiveMonth) D.activeMonth=localActiveMonth;
+        // activeMonth ab D (mnr3_data) se hi aata hai - stale key override nahi karega
         showSync('📱 Data loaded!','#1a7a3a');
         renderAll();
         // Background mein Firebase sync karo (sirf save, load nahi)
@@ -1197,7 +1197,6 @@ async function loadAll(){
     if(d&&d.flats&&d.flats.length>0){
       D=mergeDefaults(d);
       if(localArchive){ try{D.monthArchive=JSON.parse(localArchive);}catch(x){} }
-      if(localActiveMonth) D.activeMonth=localActiveMonth;
       localStorage.setItem('mnr3_data',JSON.stringify(D));
       localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive||[]));
       showSync('☁️ Cloud data loaded!','#1a7a3a');
@@ -1443,7 +1442,7 @@ function executeMonthClose(){
   D.contractors=[...D.contractors]; // contractors carry forward as is
 
   // Save locally first, then Firebase (without reloading)
-  try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(e){}
+  try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); localStorage.setItem('mnr3_activeMonth',D.activeMonth||''); }catch(e){}
   try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive)); }catch(e){}
   // Push to Firebase without triggering reload
   fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)})
@@ -1936,7 +1935,7 @@ function reopenMonth(month){
 
   D.monthArchive=D.monthArchive.filter(x=>x.month!==month);
   // Save without Firebase reload
-  try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(e){}
+  try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); localStorage.setItem('mnr3_activeMonth',D.activeMonth||''); }catch(e){}
   try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive)); }catch(e){}
   fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)})
     .then(r=>{ if(r.ok) showSync('✅ Saved!','#1a7a3a'); })
@@ -2130,7 +2129,7 @@ function saveArchiveEdits(month){
   cascadeMonthUpdates(month);
 
   // Save karo
-  try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); }catch(e){}
+  try{ localStorage.setItem('mnr3_data',JSON.stringify(D)); localStorage.setItem('mnr3_activeMonth',D.activeMonth||''); }catch(e){}
   try{ localStorage.setItem('mnr3_archive',JSON.stringify(D.monthArchive)); }catch(e){}
   fetch(FB+'/mnr3_data.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)})
     .then(()=>showSync('✅ Saved!','#1a7a3a'))
